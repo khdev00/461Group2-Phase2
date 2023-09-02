@@ -6,5 +6,5 @@ Project Members:
 2. Gabrielle Mazion
 3. Neha Sharma
 4. Atharva Patil
-5. Christopher Louly 
+5. Christopher Louly
 
