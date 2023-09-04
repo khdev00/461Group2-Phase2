@@ -36,43 +36,9 @@ function retrieveGithubKey() {
         console.log("found github API key");
         return githubApiKey;
     }
-}
+} 
 
-async function getContributorsAndReadme(owner: string, repo: string, token: string) {
-    const headers = {
-      Authorization: `Bearer ${token}`,
-    };
-  
-    try {
-      // Fetch contributors using REST API
-      const contributorsResponse = await axios.get(
-        `https://api.github.com/repos/${owner}/${repo}/contributors`,
-        {
-          headers,
-        }
-      );
-  
-      const contributors = contributorsResponse.data.map((contributor: any) => contributor.login);
-  
-      // Fetch README using REST API
-      const readmeResponse = await axios.get(
-        `https://api.github.com/repos/${owner}/${repo}/readme`,
-        {
-          headers,
-        }
-      );
-        
-      const readmeContent = Buffer.from(readmeResponse.data.content, 'base64').toString('utf-8');
-      const readmeLength = readmeContent.length;
-
-      return { contributors, readmeLength };
-    } catch (error) {
-      console.error('Error:', error);
-      throw error;
-    }
-  }
-
-  async function getRepoObject(owner: string, repo: string, token: string) {
+async function getRepoObject(owner: string, repo: string, token: string) {
     const headers = {
         Authorization: `Bearer ${token}`,
     };
