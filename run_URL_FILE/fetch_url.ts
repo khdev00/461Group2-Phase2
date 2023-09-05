@@ -8,7 +8,7 @@ import axios from 'axios'; // Library to conveniantly send HTTP requests to inte
 
 dotenv.config();
 
-class Repo {
+class Package {
     contributors?: Array<string>;
     readmeLength?: Number;
   
@@ -24,7 +24,27 @@ class Repo {
     setReadmeLength(readmeLength?: Number) {
         this.readmeLength = readmeLength;
     }
-    
+  }
+
+  class Url {
+    url: string;
+    urlType: string;
+    packageName: string;
+    packageOwner?: string;
+  
+    constructor(url: string, urlType: string, packageName: string, packageOwner?: string) {
+        this.url = url;
+        this.urlType = urlType;
+        this.packageName = packageName;
+        this.packageOwner = packageOwner;
+    }
+
+    getPackageOwner() {
+        if(this.packageOwner) {
+            return this.packageOwner;
+        }
+        return "";
+    }
   }
 
 function retrieveGithubKey() {
@@ -38,75 +58,41 @@ function retrieveGithubKey() {
     }
 }
 
-async function getContributorsAndReadme(owner: string, repo: string, token: string) {
-    const headers = {
-      Authorization: `Bearer ${token}`,
-    };
-  
-    try {
-      // Fetch contributors using REST API
-      const contributorsResponse = await axios.get(
-        `https://api.github.com/repos/${owner}/${repo}/contributors`,
-        {
-          headers,
-        }
-      );
-  
-      const contributors = contributorsResponse.data.map((contributor: any) => contributor.login);
-  
-      // Fetch README using REST API
-      const readmeResponse = await axios.get(
-        `https://api.github.com/repos/${owner}/${repo}/readme`,
-        {
-          headers,
-        }
-      );
-        
-      const readmeContent = Buffer.from(readmeResponse.data.content, 'base64').toString('utf-8');
-      const readmeLength = readmeContent.length;
-
-      return { contributors, readmeLength };
-    } catch (error) {
-      console.error('Error:', error);
-      throw error;
-    }
-  }
-
-  async function getRepoObject(owner: string, repo: string, token: string) {
+async function getPackageObject(owner: string, packageName: string, token: string) {
     const headers = {
         Authorization: `Bearer ${token}`,
     };
 
-    const repoObj = new Repo();
+    const packageObj = new Package();
 
-    await axios.get(`https://api.github.com/repos/${owner}/${repo}/contributors`,{headers,})
+    await axios.get(`https://api.github.com/repos/${owner}/${packageName}/contributors`,{headers,})
         .then((response) => {
             const contributors = response.data.map((contributor: any) => contributor.login);
-            repoObj.setContributors(contributors);
+            packageObj.setContributors(contributors);
         })
         .catch ((err) => {
             console.error('Error:', err);
-            repoObj.setContributors([]);
+            packageObj.setContributors([]);
         });
 
-    await axios.get(`https://api.github.com/repos/${owner}/${repo}/readme`,{headers,})
+    await axios.get(`https://api.github.com/repos/${owner}/${packageName}/readme`,{headers,})
         .then((response) => {
             const readmeContent = Buffer.from(response.data.content, 'base64').toString('utf-8');
-            repoObj.setReadmeLength(readmeContent.length);
+            packageObj.setReadmeLength(readmeContent.length);
         })
         .catch ((err) => {
             console.error('Error:', err);
-            repoObj.setReadmeLength(0);
+            packageObj.setReadmeLength(0);
         });
 
-    return repoObj;
+    return packageObj;
   }
   
   // Usage example
   const githubToken = retrieveGithubKey();
-  let repoObject;
-  getRepoObject('axios', 'axios', githubToken)
-    .then((returnedRepoObject) => {
-        repoObject = returnedRepoObject;
-        console.log(repoObject);
+  const exampleUrl = new Url("https://github.com/cloudinary/cloudinary_npm", "Github", "cloudinary_npm", "cloudinary");
+  getPackageObject(exampleUrl.getPackageOwner(), exampleUrl.packageName, githubToken)
+    .then((returnedPackageObject) => {
+        let packageObject = returnedPackageObject;
+        console.log(packageObject);
     })
