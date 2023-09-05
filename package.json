@@ -1,0 +1,12 @@
+{
+  "name": "461group2",
+  "version": "1.0.0",
+  "description": "Repo for the 461 ACME NPM Phase 1 project",
+  "main": "run.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
