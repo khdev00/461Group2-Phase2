@@ -8,5 +8,10 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "graphql": "^16.8.0",
+    "husky": "^8.0.3",
+    "winston": "^3.10.0"
+  }
 }
