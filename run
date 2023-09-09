@@ -29,6 +29,8 @@ if [ "$1" == "install" ]; then
 
   exit 0
 elif [ "$1" == "test" ]; then
+  # Run Jest tests
+  npx jest
   # Placeholder for testing command
   echo "X/Y test cases passed. Z% line coverage achieved."
   exit 0
