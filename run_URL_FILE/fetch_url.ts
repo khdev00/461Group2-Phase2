@@ -15,20 +15,25 @@ const http = require("isomorphic-git/http/node");
 dotenv.config();
 
 class Package {
-    contributors?: Array<string>;
-    readmeLength?: Number;
-  
-    constructor(contributors?: Array<string>, readmeLength?: Number) {
-        this.contributors = contributors;
-        this.readmeLength = readmeLength;
-    }
+    contributors: Array<string> = [];
+    readmeLength: number = -1;
+    rampUp: number = -1;
+    hasLicense: boolean = false;
 
-    setContributors(contributors?: Array<string>) {
+    setContributors(contributors: Array<string>) {
         this.contributors = contributors;
     }
 
-    setReadmeLength(readmeLength?: Number) {
+    setReadmeLength(readmeLength: number) {
         this.readmeLength = readmeLength;
+    }
+    
+    setRampUp(rampUp: number) {
+        this.rampUp = rampUp;
+    }
+
+    setHasLicense(hasLicense: boolean) {
+        this.hasLicense = hasLicense;
     }
   }
 
@@ -62,6 +67,27 @@ function retrieveGithubKey() {
     }
 }
 
+function calculateRampUp(readmeLength: number) {
+    let rampUpVal = 0;
+
+    // Avg readme length is 2.5 paragraphs
+    // Avg word count in 1 paragraph is 150 words
+    // Avg character per word is 5
+    let targetReadmeLength = 2.5 * 150 * 5; 
+    let longestReadmeLength = 20 * 150 * 5; 
+
+    // 100 is perfect length
+    // 0 is very long or very short
+    let readmeDifference = Math.abs(targetReadmeLength -  readmeLength);
+    let readmeVal = 100 - (readmeDifference / longestReadmeLength) * 100;
+
+    rampUpVal = readmeVal;
+
+    return rampUpVal
+}
+
+// Useful for looking at which data you can access:
+// https://docs.github.com/en/rest/overview/endpoints-available-for-github-app-installation-access-tokens?apiVersion=2022-11-28
 async function getPackageObject(owner: string, packageName: string, token: string) {
     const headers = {
         Authorization: `Bearer ${token}`,
@@ -87,6 +113,15 @@ async function getPackageObject(owner: string, packageName: string, token: strin
         .catch ((err) => {
             console.error('Error:', err);
             packageObj.setReadmeLength(0);
+        });
+
+    await axios.get(`https://api.github.com/repos/${owner}/${packageName}/license`,{headers,})
+        .then((response) => {
+            packageObj.setHasLicense(true);
+        })
+        .catch ((err) => {
+            //console.error('Error:', err);
+            packageObj.setHasLicense(false);
         });
 
     return packageObj;
@@ -115,7 +150,9 @@ async function cloneRepository(repoUrl: string) {
   
 // Usage example
 const githubToken = retrieveGithubKey();
-const exampleUrl = new Url("https://github.com/cloudinary/cloudinary_npm", "cloudinary_npm", "cloudinary");
+//const exampleUrl = new Url("https://github.com/cloudinary/cloudinary_npm", "cloudinary_npm", "cloudinary");
+const exampleUrl = new Url("https://github.com/mghera02/461Group2", "461Group2", "mghera02");
+//const exampleUrl = new Url("https://github.com/vishnumaiea/ptScheduler", "ptScheduler", "vishnumaiea");
 
 getPackageObject(exampleUrl.getPackageOwner(), exampleUrl.packageName, githubToken)
     .then((returnedPackageObject) => {
@@ -124,4 +161,4 @@ getPackageObject(exampleUrl.getPackageOwner(), exampleUrl.packageName, githubTok
     })
 
 const localDir = './fetch_url_cloned_repos';
-cloneRepository(exampleUrl.url);
+//cloneRepository(exampleUrl.url);
