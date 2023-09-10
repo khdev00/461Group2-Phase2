@@ -19,6 +19,7 @@ class Package {
     readmeLength: number = -1;
     rampUp: number = -1;
     hasLicense: boolean = false;
+    busFactor: number = -1;
 
     setContributors(contributors: Array<string>) {
         this.contributors = contributors;
@@ -34,6 +35,10 @@ class Package {
 
     setHasLicense(hasLicense: boolean) {
         this.hasLicense = hasLicense;
+    }
+
+    setBusFactor(busFactor: number) {
+        this.busFactor = busFactor;
     }
   }
 
@@ -86,6 +91,32 @@ function calculateRampUp(readmeLength: number) {
     return rampUpVal
 }
 
+function calculateBusFactor(readmeLength: number, contributorsNum: number) {
+    let busFactorVal = 0;
+
+    // Avg word count in 1 paragraph is 150 words
+    // Avg character per word is 5
+    let longestReadmeLength = 15 * 150 * 5; 
+    // 100 is perfect length
+    // 0 is too short
+    let readmeVal = 0;
+    if(readmeLength > longestReadmeLength) {
+        readmeVal = 100;
+    } else {
+        let readmeDifference = longestReadmeLength -  readmeLength;
+        readmeVal = 100 - (readmeDifference / longestReadmeLength) * 100;
+    }
+
+    if(contributorsNum > 20) {
+        contributorsNum = 20;
+    }
+    let contributorsVal = contributorsNum/20 * 100;
+
+    busFactorVal = (readmeVal + contributorsVal) / 2;
+
+    return busFactorVal
+}
+
 // Useful for looking at which data you can access:
 // https://docs.github.com/en/rest/overview/endpoints-available-for-github-app-installation-access-tokens?apiVersion=2022-11-28
 async function getPackageObject(owner: string, packageName: string, token: string) {
@@ -124,6 +155,8 @@ async function getPackageObject(owner: string, packageName: string, token: strin
             packageObj.setHasLicense(false);
         });
 
+    packageObj.setBusFactor(calculateBusFactor(packageObj.readmeLength, packageObj.contributors.length));
+
     return packageObj;
 }
 
@@ -144,7 +177,7 @@ async function cloneRepository(repoUrl: string) {
     fs.readdirSync(dir);
     await git.log({fs, dir}) 
     .then((response) => {
-        console.log(response);
+        //console.log(response);
     })
 }
   
@@ -161,4 +194,4 @@ getPackageObject(exampleUrl.getPackageOwner(), exampleUrl.packageName, githubTok
     })
 
 const localDir = './fetch_url_cloned_repos';
-//cloneRepository(exampleUrl.url);
+cloneRepository(exampleUrl.url);
