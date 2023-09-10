@@ -5,6 +5,7 @@
 
 import dotenv from 'dotenv'; // For retrieving env variables
 import axios from 'axios'; // Library to conveniantly send HTTP requests to interact with REST API
+import winston from 'winston'; //Logging library
 
 import * as git from 'isomorphic-git'; // For cloning repos locally and getting git metadata
 import fs from 'fs'; // Node.js file system module for cloning repos  
@@ -13,6 +14,16 @@ import path from 'path'
 const http = require("isomorphic-git/http/node");
 
 dotenv.config();
+
+//Logger initialization
+const logger = winston.createLogger({
+    level: 'info',
+    format: winston.format.simple(),
+    transports: [
+      new winston.transports.File({ filename: 'error.log', level: 'error' }),
+      new winston.transports.File({ filename: 'info.log', level: 'info' }),
+    ],
+  });
 
 class Package {
     contributors?: Array<string>;
@@ -54,10 +65,11 @@ class Package {
 function retrieveGithubKey() {
     const githubApiKey = process.env.GITHUB_TOKEN;
     if (!githubApiKey) {
-        console.error("GitHub API key not found in environment variables.");
-        process.exit(1);
+        const error = new Error("GitHub API key not found in environment variables.");
+        logger.error(error);
+        throw error;
     } else {
-        console.log("found github API key");
+        logger.info("found github API key");
         return githubApiKey;
     }
 }
@@ -75,7 +87,7 @@ async function getPackageObject(owner: string, packageName: string, token: strin
             packageObj.setContributors(contributors);
         })
         .catch ((err) => {
-            console.error('Error:', err);
+            logger.error(`Error: ${err}`);
             packageObj.setContributors([]);
         });
 
@@ -85,16 +97,36 @@ async function getPackageObject(owner: string, packageName: string, token: strin
             packageObj.setReadmeLength(readmeContent.length);
         })
         .catch ((err) => {
-            console.error('Error:', err);
+            logger.error(`Error: ${err}`);
             packageObj.setReadmeLength(0);
         });
 
+    if (packageObj.contributors) {
+        logger.info(`Contributors retrieved for ${owner}/${packageName}`);
+    } else {
+        logger.error(`Failed to retrieve contributors for ${owner}/${packageName}`);
+    }
+
+    if (packageObj.readmeLength) {
+        logger.info(`Readme length retrieved for ${owner}/${packageName}`);
+    } else {
+        logger.error(`Failed to retrieve readme length for ${owner}/${packageName}`);
+    }
+
+    if (packageObj.contributors && packageObj.readmeLength) {
+        logger.info(`Package {
+            contributors: [
+                ${packageObj.contributors ? packageObj.contributors.map((contributor) => `${contributor}`).join(',\n                ') : ''}
+            ],
+            readmeLength: ${packageObj.readmeLength}
+        }`);
+    }
     return packageObj;
 }
 
 async function cloneRepository(repoUrl: string) {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), localDir));
-    console.log('made directory:', dir);
+    logger.info(`made directory: ${dir}`);
     fs.readdirSync(dir);
 
     await git.clone({
@@ -108,9 +140,23 @@ async function cloneRepository(repoUrl: string) {
 
     fs.readdirSync(dir);
     await git.log({fs, dir}) 
-    .then((response) => {
-        console.log(response);
+    .then((commits) => {
+    logger.info(`Git log retrieved for ${repoUrl}`);
+    commits.forEach((commit, index) => {
+        logger.info(`Commit ${index + 1}:`);
+        logger.info(`OID: ${commit.oid}`);
+        logger.info(`Message: ${commit.commit.message}`);
+        logger.info(`Parent: ${commit.commit.parent.join(', ')}`);
+        logger.info(`Tree: ${commit.commit.tree}`);
+        logger.info(`Author: ${commit.commit.author.name} <${commit.commit.author.email}>`);
+        logger.info(`Committer: ${commit.commit.committer.name} <${commit.commit.committer.email}>`);
+        logger.info(`GPG Signature: ${commit.commit.gpgsig}`);
+    });
     })
+    .catch((error) => {
+        logger.error(`Failed to retrieve git log for ${repoUrl}: ${error.message}`);
+    });
+
 }
   
 // Usage example
@@ -118,10 +164,15 @@ const githubToken = retrieveGithubKey();
 const exampleUrl = new Url("https://github.com/cloudinary/cloudinary_npm", "cloudinary_npm", "cloudinary");
 
 getPackageObject(exampleUrl.getPackageOwner(), exampleUrl.packageName, githubToken)
-    .then((returnedPackageObject) => {
-        let packageObject = returnedPackageObject;
-        console.log(packageObject);
-    })
+    .catch((error) => {
+        logger.error(`Error while retrieving package object: ${error.message}`);
+    });
 
 const localDir = './fetch_url_cloned_repos';
 cloneRepository(exampleUrl.url);
+
+module.exports = {
+    retrieveGithubKey,
+    getPackageObject,
+    cloneRepository
+};
