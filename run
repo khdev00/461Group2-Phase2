@@ -10,6 +10,10 @@ if [ "$1" == "install" ]; then
   npm install dotenv || { echo "Failed to install dotenv"; exit 1; }
   npm install @types/node || { echo "Failed to install @types/node"; exit 1; }
   npm install axios || { echo "Failed to install axios"; exit 1; }
+  npm install isomorphic-fetch || { echo "Failed to install isomorphic-fetch"; exit 1; }
+  npm install fs || { echo "Failed to install fs"; exit 1; }
+  npm install os || { echo "Failed to install os"; exit 1; }
+  npm install path || { echo "Failed to install path"; exit 1; }
   npm install @types/jest || { echo "Failed to install @types/jest"; exit 1; }
   npm install ts-jest || { echo "Failed to install ts-jest"; exit 1; }
 
