@@ -15,13 +15,13 @@ const http = require("isomorphic-git/http/node");
 dotenv.config();
 
 class Package {
-    contributors: Array<string> = [];
+    contributors:Map<string, number> = new Map();
     readmeLength: number = -1;
     rampUp: number = -1;
     hasLicense: boolean = false;
     busFactor: number = -1;
 
-    setContributors(contributors: Array<string>) {
+    setContributors(contributors: Map<string, number>) {
         this.contributors = contributors;
     }
 
@@ -91,7 +91,20 @@ function calculateRampUp(readmeLength: number) {
     return rampUpVal
 }
 
-function calculateBusFactor(readmeLength: number, contributorsNum: number) {
+async function readReadmeFile(repoUrl: string) {
+    const readmePath = `${repoUrl}/README.md`; // Adjust the filename if necessary
+    try {
+      const readmeContent = await fs.promises.readFile(readmePath, 'utf-8');
+      console.log('README Content:');
+      console.log(readmeContent);
+      return `${readmeContent}`;
+    } catch (error) {
+      console.error('Error reading README:', error);
+      return '';
+    }
+  }
+
+function calculateBusFactor(readmeLength: number, contributors: Map<string, number>) {
     let busFactorVal = 0;
 
     // Avg word count in 1 paragraph is 150 words
@@ -107,11 +120,26 @@ function calculateBusFactor(readmeLength: number, contributorsNum: number) {
         readmeVal = 100 - (readmeDifference / longestReadmeLength) * 100;
     }
 
+    // Take distrubution of number of commits per contributor
+    // If one contributor does a disproportionate number of the commits, it is a lower score
+    // 2/3 of equation is based on distributed contributor commit #, 1/3 is number of contributors
+    let totalCommits = 0;
+    let contributorsNum = 0;
+    let contributorsVal = 0;
+    contributors.forEach((value: number, key: string) => {
+        totalCommits += value;
+        contributorsNum++;
+    });
+    contributors.forEach((value: number, key: string) => {
+        contributorsVal += 100 - ((value/totalCommits) * 100);
+    });
+    contributorsVal /= contributorsNum;
     if(contributorsNum > 20) {
         contributorsNum = 20;
     }
-    let contributorsVal = contributorsNum/20 * 100;
+    contributorsVal = (contributorsNum/20 * 100) / 3 + 2 * contributorsVal / 3;
 
+    // Bus factor is average of readmeVal and contributorVal
     busFactorVal = (readmeVal + contributorsVal) / 2;
 
     return busFactorVal
@@ -119,24 +147,20 @@ function calculateBusFactor(readmeLength: number, contributorsNum: number) {
 
 // Useful for looking at which data you can access:
 // https://docs.github.com/en/rest/overview/endpoints-available-for-github-app-installation-access-tokens?apiVersion=2022-11-28
-async function getPackageObject(owner: string, packageName: string, token: string) {
+async function getPackageObject(owner: string, packageName: string, token: string, packageObj: Package) {
     const headers = {
         Authorization: `Bearer ${token}`,
     };
 
-    const packageObj = new Package();
-
-    await axios.get(`https://api.github.com/repos/${owner}/${packageName}/contributors`,{headers,})
+    /*(await axios.get(`https://api.github.com/repos/${owner}/${packageName}/contributors`,{headers,})
         .then((response) => {
             const contributors = response.data.map((contributor: any) => contributor.login);
-            packageObj.setContributors(contributors);
         })
         .catch ((err) => {
             console.error('Error:', err);
-            packageObj.setContributors([]);
-        });
+        });*/
 
-    await axios.get(`https://api.github.com/repos/${owner}/${packageName}/readme`,{headers,})
+    /*await axios.get(`https://api.github.com/repos/${owner}/${packageName}/readme`,{headers,})
         .then((response) => {
             const readmeContent = Buffer.from(response.data.content, 'base64').toString('utf-8');
             packageObj.setReadmeLength(readmeContent.length);
@@ -144,7 +168,7 @@ async function getPackageObject(owner: string, packageName: string, token: strin
         .catch ((err) => {
             console.error('Error:', err);
             packageObj.setReadmeLength(0);
-        });
+        });*/
 
     await axios.get(`https://api.github.com/repos/${owner}/${packageName}/license`,{headers,})
         .then((response) => {
@@ -155,12 +179,10 @@ async function getPackageObject(owner: string, packageName: string, token: strin
             packageObj.setHasLicense(false);
         });
 
-    packageObj.setBusFactor(calculateBusFactor(packageObj.readmeLength, packageObj.contributors.length));
-
     return packageObj;
 }
 
-async function cloneRepository(repoUrl: string) {
+async function cloneRepository(repoUrl: string, packageObj: Package) {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), localDir));
     console.log('made directory:', dir);
     fs.readdirSync(dir);
@@ -171,14 +193,36 @@ async function cloneRepository(repoUrl: string) {
         dir,
         url: repoUrl,
         singleBranch: true,
-        depth: 10
+        depth: 200    
     });
 
     fs.readdirSync(dir);
+    let repoAuthors = new Map();
     await git.log({fs, dir}) 
     .then((response) => {
-        //console.log(response);
+        // Get commit authors
+        response.forEach(function (val) {
+            let authorEmail = `${val.commit.author.email}`;
+            if(!authorEmail.includes('github')) {
+                if(repoAuthors.get(authorEmail) !== undefined) {
+                    repoAuthors.set(authorEmail, repoAuthors.get(authorEmail) + 1);
+                } else {
+                    repoAuthors.set(authorEmail, 1);
+                }
+            }
+        }); 
     })
+
+    packageObj.setContributors(repoAuthors);
+    console.log(repoAuthors);
+
+    // Get readme length
+    await readReadmeFile(dir).then ((response) => {
+        packageObj.setReadmeLength(response.length);
+    });
+    
+    packageObj.setBusFactor(calculateBusFactor(packageObj.readmeLength, packageObj.contributors));
+    return packageObj;
 }
   
 // Usage example
@@ -187,11 +231,16 @@ const githubToken = retrieveGithubKey();
 const exampleUrl = new Url("https://github.com/mghera02/461Group2", "461Group2", "mghera02");
 //const exampleUrl = new Url("https://github.com/vishnumaiea/ptScheduler", "ptScheduler", "vishnumaiea");
 
-getPackageObject(exampleUrl.getPackageOwner(), exampleUrl.packageName, githubToken)
+let packageObj = new Package();
+
+getPackageObject(exampleUrl.getPackageOwner(), exampleUrl.packageName, githubToken, packageObj)
     .then((returnedPackageObject) => {
-        let packageObject = returnedPackageObject;
-        console.log(packageObject);
+        packageObj = returnedPackageObject;
+        console.log(packageObj);
     })
 
 const localDir = './fetch_url_cloned_repos';
-cloneRepository(exampleUrl.url);
+cloneRepository(exampleUrl.url, packageObj).then ((response) => {
+    packageObj = response;
+    console.log(packageObj);
+});
