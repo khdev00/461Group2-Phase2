@@ -14,12 +14,19 @@ const http = require("isomorphic-git/http/node");
 
 dotenv.config();
 
+// This is what controlls the rounding for the metrics,
+// In class we were told to round to 5dp without padding with zeros
+// If that number changes, change this value. 
+const rf: number = 5; 
+
 class Package {
+    url: string;
     contributors:Map<string, number> = new Map();
     readmeLength: number = -1;
     rampUp: number = -1;
     hasLicense: boolean = false;
     busFactor: number = -1;
+    netScore: number = -1;
 
     setContributors(contributors: Map<string, number>) {
         this.contributors = contributors;
@@ -39,6 +46,24 @@ class Package {
 
     setBusFactor(busFactor: number) {
         this.busFactor = busFactor;
+    }
+
+    setURL(url: string) {
+        this.url = url
+    }
+
+    printMetrics() {
+        console.log(
+            `\{` +
+            `\"URL\":\"` + this.url + `\", ` +
+            `\"NET_SCORE\":` + `${this.netScore}, ` +              // This metric has a field, but is not implemented
+            `\"RAMP_UP_SCORE\":` + `${this.rampUp}, ` +            // Implemented!
+            `\"CORRECTNESS_SCORE\":` + `${-1}, ` +                 // This metric doesn't seem have a field in this class yet
+            `\"BUS_FACTOR_SCORE\":` + `${this.busFactor}, ` +      // Implemented!
+            `\"RESPONSIVE_MAINTAINER_SCORE\":` + `${-1}, ` +       // This metric deosn't seem have a field in this class yet
+            `\"LICENSE_SCORE\":` + `${Number(this.hasLicense)}` +  // Implemented!
+            `\}\n`
+        );
     }
   }
 
@@ -87,6 +112,9 @@ function calculateRampUp(readmeLength: number) {
     let readmeVal = 100 - (readmeDifference / longestReadmeLength) * 100;
 
     rampUpVal = readmeVal;
+
+    // Rounds to rf decimal places without padding with 0s (rf defined globally)
+    rampUpVal = Math.round(rampUpVal * (10 ** rf)) / (10 ** rf);
 
     return rampUpVal
 }
@@ -142,6 +170,9 @@ function calculateBusFactor(readmeLength: number, contributors: Map<string, numb
     // Bus factor is average of readmeVal and contributorVal
     busFactorVal = (readmeVal + contributorsVal) / 2;
 
+    // Rounds to rf decimal places without padding with 0s (rf defined globally)
+    busFactorVal = Math.round(busFactorVal * (10 ** rf)) / (10 ** rf);
+
     return busFactorVal
 }
 
@@ -183,6 +214,7 @@ async function getPackageObject(owner: string, packageName: string, token: strin
 }
 
 async function cloneRepository(repoUrl: string, packageObj: Package) {
+    packageObj.setURL(repoUrl);
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), localDir));
     console.log('made directory:', dir);
     fs.readdirSync(dir);
