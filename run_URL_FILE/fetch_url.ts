@@ -246,10 +246,6 @@ const exampleUrl = new Url("https://github.com/mghera02/461Group2", "461Group2",
 let packageObj = new Package();
 
 getPackageObject(exampleUrl.getPackageOwner(), exampleUrl.packageName, githubToken, packageObj)
-    .then((returnedPackageObject) => {
-        packageObj = returnedPackageObject;
-        console.log(packageObj);
-    })
 
 const localDir = './fetch_url_cloned_repos';
 cloneRepository(exampleUrl.url, packageObj).then ((response) => {
@@ -260,5 +256,3 @@ cloneRepository(exampleUrl.url, packageObj).then ((response) => {
 module.exports = {
     retrieveGithubKey,
     getPackageObject,
-    cloneRepository
-};

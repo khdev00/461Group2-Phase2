@@ -1,4 +1,4 @@
-const { retrieveGithubKey, getPackageObject, cloneRepository } = require('./run_URL_FILE/fetch_url');
+const { retrieveGithubKey, getPackageObject, cloneRepository, calculateBusFactor } = require('./run_URL_FILE/fetch_url');
 jest.mock('axios'); 
 const axios = require('axios');
 
@@ -82,4 +82,3 @@ test('clones a repository successfully', async () => {
     singleBranch: true,
     depth: 10,
   });
-});*/
