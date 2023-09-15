@@ -1,4 +1,4 @@
-const { retrieveGithubKey, getPackageObject, cloneRepository } = require('./run_URL_FILE/fetch_url');
+const { retrieveGithubKey, getPackageObject, cloneRepository, calculateBusFactor } = require('./run_URL_FILE/fetch_url');
 jest.mock('axios'); 
 const axios = require('axios');
 
@@ -82,4 +82,89 @@ test('handles clone failure gracefully', async () => {
   mockedClone.mockRejectedValueOnce(new Error('Failed to clone'));
 
   await expect(cloneRepository(repoUrl)).rejects.toThrowError('Failed to clone');
+});
+
+// Test case 1: Describe what this test is checking
+test('calculateBusFactor should calculate bus factor correctly for a long readme and multiple contributors', async () => {
+  // Mock data that you want to use for testing
+  const readmeLength = 5000; // Replace with an appropriate readme length
+  const contributors = new Map<string, number>([
+    ['contributor1', 100],
+    ['contributor2', 50],
+    ['contributor3', 30],
+  ]);
+
+  // Mock Axios responses for the required calls inside calculateBusFactor
+  axios.get.mockResolvedValueOnce({
+    data: { content: Buffer.from('Readme content', 'utf-8').toString('base64') },
+  });
+
+  // Call the calculateBusFactor function with the mock data
+  const busFactor = await calculateBusFactor(readmeLength, contributors);
+
+  // Assert the expected result
+  expect(busFactor).toBeCloseTo(46.94, 2); // Adjust the expected value as needed
+});
+
+// Test case 2: Describe another scenario to test
+test('calculateBusFactor should handle a short readme and few contributors', async () => {
+  // Mock data for a different scenario
+  const readmeLength = 100; // Replace with an appropriate readme length
+  const contributors = new Map<string, number>([
+    ['contributor1', 10],
+  ]);
+
+  // Mock Axios responses for the required calls inside calculateBusFactor
+  axios.get.mockResolvedValueOnce({
+    data: { content: Buffer.from('Short readme', 'utf-8').toString('base64') },
+  });
+
+  // Call the calculateBusFactor function with the mock data
+  const busFactor = await calculateBusFactor(readmeLength, contributors);
+
+  // Assert the expected result for this scenario
+  expect(busFactor).toBeCloseTo(1.2778, 2); // Adjust the expected value as needed
+});
+
+// Test case 1: Calculate bus factor for a very long readme and many contributors
+test('calculateBusFactor should handle a very long readme and many contributors', async () => {
+  // Mock data for a very long readme and many contributors
+  const readmeLength = 20000; // A very long readme
+  const contributors = new Map<string, number>([
+    ['contributor1', 200],
+    ['contributor2', 150],
+    ['contributor3', 100],
+    ['contributor4', 75],
+    ['contributor5', 50],
+    ['contributor6', 25],
+  ]);
+
+  // Mock Axios responses for the required calls inside calculateBusFactor
+  axios.get.mockResolvedValueOnce({
+    data: { content: Buffer.from('Very long readme content', 'utf-8').toString('base64') },
+  });
+
+  // Call the calculateBusFactor function with the mock data
+  const busFactor = await calculateBusFactor(readmeLength, contributors);
+
+  // Assert the expected result
+  expect(busFactor).toBeCloseTo(82.78, 2); // Adjust the expected value as needed
+});
+
+// Test case 2: Calculate bus factor for an empty readme and one contributor
+test('calculateBusFactor should handle an empty readme and one contributor', async () => {
+  // Mock data for an empty readme and one contributor
+  const readmeLength = 0; // An empty readme
+  const contributors = new Map<string, number>([['contributor1', 10]]);
+
+  // Mock Axios responses for the required calls inside calculateBusFactor
+  axios.get.mockResolvedValueOnce({
+    data: { content: Buffer.from('', 'utf-8').toString('base64') }, // Empty readme content
+  });
+
+  // Call the calculateBusFactor function with the mock data
+  const busFactor = await calculateBusFactor(readmeLength, contributors);
+
+  // Assert the expected result
+  expect(busFactor).toBeCloseTo(0.833, 2); // Adjust the expected value as needed
 });

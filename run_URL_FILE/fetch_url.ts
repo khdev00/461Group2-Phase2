@@ -207,7 +207,7 @@ async function getPackageObject(owner: string, packageName: string, token: strin
     if (packageObj.contributors && packageObj.readmeLength) {
         logger.info(`Package {
             contributors: [
-                ${packageObj.contributors ? packageObj.contributors.map((contributor) => `${contributor}`).join(',\n                ') : ''}
+                ${packageObj.contributors ? Array.from(packageObj.contributors).map(([contributor, value]) => `${contributor}: ${value}`).join(',\n                ') : ''}
             ],
             readmeLength: ${packageObj.readmeLength}
         }`);
@@ -283,7 +283,7 @@ const exampleUrl = new Url("https://github.com/mghera02/461Group2", "461Group2",
 
 let packageObj = new Package();
 
-getPackageObject(exampleUrl.getPackageOwner(), exampleUrl.packageName, githubToken)
+getPackageObject(exampleUrl.getPackageOwner(), exampleUrl.packageName, githubToken, packageObj)
     .catch((error) => {
         logger.error(`Error while retrieving package object: ${error.message}`);
     });
@@ -292,9 +292,11 @@ const localDir = './fetch_url_cloned_repos';
 cloneRepository(exampleUrl.url, packageObj).then ((response) => {
     packageObj = response;
     console.log(packageObj);
+});
 
 module.exports = {
     retrieveGithubKey,
     getPackageObject,
-    cloneRepository
+    cloneRepository,
+    calculateBusFactor
 };
