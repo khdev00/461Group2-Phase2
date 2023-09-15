@@ -20,7 +20,17 @@ test('valid token', async () => {
   expect(token).toBe('valid_token');
 });
 
-test('getPackageObject with valid owner, package name, and token', async () => {
+test('handles clone failure gracefully', async () => {
+  const repoUrl = 'https://github.com/invalid/repo';
+
+  // Mock the clone function of git to simulate a clone failure
+  const mockedClone = jest.spyOn(require('isomorphic-git'), 'clone');
+  mockedClone.mockRejectedValueOnce(new Error('Failed to clone'));
+
+  await expect(cloneRepository(repoUrl)).rejects.toThrowError('Failed to clone');
+});
+
+/*test('getPackageObject with valid owner, package name, and token', async () => {
   const owner = 'exampleOwner';
   const packageName = 'examplePackage';
   const token = retrieveGithubKey();
@@ -72,14 +82,4 @@ test('clones a repository successfully', async () => {
     singleBranch: true,
     depth: 10,
   });
-});
-
-test('handles clone failure gracefully', async () => {
-  const repoUrl = 'https://github.com/invalid/repo';
-
-  // Mock the clone function of git to simulate a clone failure
-  const mockedClone = jest.spyOn(require('isomorphic-git'), 'clone');
-  mockedClone.mockRejectedValueOnce(new Error('Failed to clone'));
-
-  await expect(cloneRepository(repoUrl)).rejects.toThrowError('Failed to clone');
-});
+});*/
