@@ -5,6 +5,7 @@
 
 import dotenv from 'dotenv'; // For retrieving env variables
 import axios from 'axios'; // Library to conveniantly send HTTP requests to interact with REST API
+import winston from 'winston'; //Logging library
 
 import * as git from 'isomorphic-git'; // For cloning repos locally and getting git metadata
 import fs from 'fs'; // Node.js file system module for cloning repos  
@@ -14,7 +15,17 @@ const http = require("isomorphic-git/http/node");
 
 dotenv.config();
 
-class Package {
+//Logger initialization
+const logger = winston.createLogger({
+    level: 'info',
+    format: winston.format.simple(),
+    transports: [
+      new winston.transports.File({ filename: 'error.log', level: 'error' }),
+      new winston.transports.File({ filename: 'info.log', level: 'info' }),
+    ],
+  });
+
+export class Package {
     contributors:Map<string, number> = new Map();
     readmeLength: number = -1;
     rampUp: number = -1;
@@ -61,13 +72,14 @@ class Package {
     }
   }
 
-function retrieveGithubKey() {
+  function retrieveGithubKey() {
     const githubApiKey = process.env.GITHUB_TOKEN;
     if (!githubApiKey) {
-        console.error("GitHub API key not found in environment variables.");
-        process.exit(1);
+        const error = new Error("GitHub API key not found in environment variables.");
+        logger.error(error);
+        throw error;
     } else {
-        console.log("found github API key");
+        logger.info("found github API key");
         return githubApiKey;
     }
 }
@@ -184,7 +196,7 @@ async function getPackageObject(owner: string, packageName: string, token: strin
 
 async function cloneRepository(repoUrl: string, packageObj: Package) {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), localDir));
-    console.log('made directory:', dir);
+    logger.info(`made directory: ${dir}`);
     fs.readdirSync(dir);
 
     await git.clone({
@@ -214,7 +226,7 @@ async function cloneRepository(repoUrl: string, packageObj: Package) {
     })
 
     packageObj.setContributors(repoAuthors);
-    console.log(repoAuthors);
+    logger.info(repoAuthors);
 
     // Get readme length
     await readReadmeFile(dir).then ((response) => {
@@ -244,3 +256,9 @@ cloneRepository(exampleUrl.url, packageObj).then ((response) => {
     packageObj = response;
     console.log(packageObj);
 });
+
+module.exports = {
+    retrieveGithubKey,
+    getPackageObject,
+    cloneRepository
+};
