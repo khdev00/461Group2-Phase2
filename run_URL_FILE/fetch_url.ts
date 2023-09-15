@@ -204,14 +204,14 @@ async function getPackageObject(owner: string, packageName: string, token: strin
         logger.error(`Failed to retrieve readme length for ${owner}/${packageName}`);
     }
 
-    if (packageObj.contributors && packageObj.readmeLength) {
+    /*if (packageObj.contributors && packageObj.readmeLength) {
         logger.info(`Package {
             contributors: [
                 ${packageObj.contributors ? packageObj.contributors.map((contributor) => `${contributor}`).join(',\n                ') : ''}
             ],
             readmeLength: ${packageObj.readmeLength}
         }`);
-    }
+    }*/
     return packageObj;
 }
 
@@ -283,18 +283,18 @@ const exampleUrl = new Url("https://github.com/cloudinary/cloudinary_npm", "clou
 
 let packageObj = new Package();
 
-getPackageObject(exampleUrl.getPackageOwner(), exampleUrl.packageName, githubToken)
+/*getPackageObject(exampleUrl.getPackageOwner(), exampleUrl.packageName, githubToken)
     .catch((error) => {
         logger.error(`Error while retrieving package object: ${error.message}`);
-    });
+    });*/
 
 const localDir = './fetch_url_cloned_repos';
 cloneRepository(exampleUrl.url, packageObj).then ((response) => {
     packageObj = response;
     console.log(packageObj);
 
-module.exports = {
+/*module.exports = {
     retrieveGithubKey,
     getPackageObject,
-    cloneRepository
-};
+    cloneRepository*/
+)};
