@@ -227,8 +227,8 @@ async function cloneRepository(repoUrl: string, packageObj: Package) {
   
 // Usage example
 const githubToken = retrieveGithubKey();
-//const exampleUrl = new Url("https://github.com/cloudinary/cloudinary_npm", "cloudinary_npm", "cloudinary");
-const exampleUrl = new Url("https://github.com/mghera02/461Group2", "461Group2", "mghera02");
+const exampleUrl = new Url("https://github.com/cloudinary/cloudinary_npm", "cloudinary_npm", "cloudinary");
+//const exampleUrl = new Url("https://github.com/mghera02/461Group2", "461Group2", "mghera02");
 //const exampleUrl = new Url("https://github.com/vishnumaiea/ptScheduler", "ptScheduler", "vishnumaiea");
 
 let packageObj = new Package();
