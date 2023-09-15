@@ -20,7 +20,7 @@ dotenv.config();
 const rf: number = 5; 
 
 class Package {
-    url: string;
+    url: string = "";
     contributors:Map<string, number> = new Map();
     readmeLength: number = -1;
     rampUp: number = -1;
