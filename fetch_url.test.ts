@@ -1,4 +1,4 @@
-const { retrieveGithubKey, getPackageObject, cloneRepository, calculateBusFactor } = require('./run_URL_FILE/fetch_url');
+const { retrieveGithubKey, getPackageObject, cloneRepository, calculateBusFactor, calculateRampUp } = require('./run_URL_FILE/fetch_url');
 jest.mock('axios'); 
 const axios = require('axios');
 
@@ -168,3 +168,49 @@ test('calculateBusFactor should handle an empty readme and one contributor', asy
   // Assert the expected result
   expect(busFactor).toBeCloseTo(0.833, 2); // Adjust the expected value as needed
 });
+
+// TESTING FOR RAMP-UP METRIC CALCULATIONS
+
+test('calculateRampUp with target readme length', async () => {
+  // Mock the Axios response for the README content
+  axios.get.mockResolvedValue({ data: Buffer.from('Readme content', 'utf-8').toString('base64') });
+
+  const targetReadmeLength = 2.5 * 150 * 5; // Perfect target length
+  const rampUp = await calculateRampUp(targetReadmeLength);
+
+  expect(rampUp).toBe(100.00000);
+});
+
+test('calculateRampUp with no readme', async () => {
+
+  // Mock the Axios response for the README content
+  axios.get.mockResolvedValue({ data: Buffer.from('Readme content', 'utf-8').toString('base64') });
+
+  const readmeLength = 0;
+  const rampUp = await calculateRampUp(readmeLength);
+
+  expect(rampUp).toBe(0.00000);
+});
+
+test('calculateRampUp with longestReadmeLength', async () => {
+
+  // Mock the Axios response for the README content
+  axios.get.mockResolvedValue({ data: Buffer.from('Readme content', 'utf-8').toString('base64') });
+
+  const readmeLength = 150000;
+  const rampUp = await calculateRampUp(readmeLength);
+
+  expect(rampUp).toBe(12.50000);
+});
+
+test('calculateRampUp with arbitrary readme length', async () => {
+
+  // Mock the Axios response for the README content
+  axios.get.mockResolvedValue({ data: Buffer.from('Readme content', 'utf-8').toString('base64') });
+
+  const readmeLength = 5000;
+  const rampUp = await calculateRampUp(readmeLength);
+
+  expect(rampUp).toBe(79.16667);
+})
+
