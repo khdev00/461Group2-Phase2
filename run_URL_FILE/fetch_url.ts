@@ -6,6 +6,8 @@
 import dotenv from 'dotenv'; // For retrieving env variables
 import axios from 'axios'; // Library to conveniantly send HTTP requests to interact with REST API
 
+//import * as ndjson from 'ndjson';
+import ndjson from 'ndjson';
 import * as git from 'isomorphic-git'; // For cloning repos locally and getting git metadata
 import fs from 'fs'; // Node.js file system module for cloning repos  
 import os from 'os'
@@ -53,17 +55,23 @@ class Package {
     }
 
     printMetrics() {
-        console.log(
-            `\{` +
-            `\"URL\":\"` + this.url + `\", ` +
-            `\"NET_SCORE\":` + `${this.netScore}, ` +              // This metric has a field, but is not implemented
-            `\"RAMP_UP_SCORE\":` + `${this.rampUp}, ` +            // Implemented!
-            `\"CORRECTNESS_SCORE\":` + `${-1}, ` +                 // This metric doesn't seem have a field in this class yet
-            `\"BUS_FACTOR_SCORE\":` + `${this.busFactor}, ` +      // Implemented!
-            `\"RESPONSIVE_MAINTAINER_SCORE\":` + `${-1}, ` +       // This metric deosn't seem have a field in this class yet
-            `\"LICENSE_SCORE\":` + `${Number(this.hasLicense)}` +  // Implemented!
-            `\}\n`
-        );
+        const output = {
+            URL : this.url,                             
+            NET_SCORE: this.netScore,                   // This metric has a field, but is not implemented
+            RAMP_UP_SCORE: this.rampUp,                 // Implemented!
+            CORRECTNESS_SCORE: -1,                      // This metric doesn't seem have a field in this class yet
+            BUS_FACTOR_SCORE: this.busFactor,           // Implemented!
+            RESPONSIVE_MAINTAINER_SCORE: -1,            // This metric doesn't seem have a field in this class yet
+            LICENSE_SCORE: Number(this.hasLicense)      // Implemented!
+        }
+
+        const stringify = ndjson.stringify();
+        stringify.write(output);
+        stringify.end();  // Close the NDJSON serialization
+
+        stringify.on('data', (line: string) => {
+          process.stdout.write(line + '\n');
+        });
     }
   }
 
@@ -276,3 +284,6 @@ cloneRepository(exampleUrl.url, packageObj).then ((response) => {
     packageObj = response;
     console.log(packageObj);
 });
+
+console.log("\n\n");
+packageObj.printMetrics();
