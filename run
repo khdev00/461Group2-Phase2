@@ -12,6 +12,7 @@ if [ "$1" == "install" ]; then
   npm install axios || { echo "Failed to install axios"; exit 1; }
   npm install @types/jest || { echo "Failed to install @types/jest"; exit 1; }
   npm install ts-jest || { echo "Failed to install ts-jest"; exit 1; }
+  npm install ndjson || { echo "Failed to install ndjson"; exit 1; }
 
   # Setup Linting (assuming VSCode will handle this, no npm install required)
 
