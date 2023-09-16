@@ -7,6 +7,8 @@ import dotenv from 'dotenv'; // For retrieving env variables
 import axios from 'axios'; // Library to conveniantly send HTTP requests to interact with REST API
 import winston from 'winston'; //Logging library
 
+//import * as ndjson from 'ndjson';
+import ndjson from 'ndjson';
 import * as git from 'isomorphic-git'; // For cloning repos locally and getting git metadata
 import fs from 'fs'; // Node.js file system module for cloning repos  
 import os from 'os'
@@ -14,6 +16,11 @@ import path from 'path'
 const http = require("isomorphic-git/http/node");
 
 dotenv.config();
+
+// This is what controlls the rounding for the metrics,
+// In class we were told to round to 5dp without padding with zeros
+// If that number changes, change this value. 
+const rf: number = 5; 
 
 //Logger initialization
 const logger = winston.createLogger({
@@ -25,12 +32,14 @@ const logger = winston.createLogger({
     ],
   });
 
-class Package {
+export class Package {
+    url: string = "";
     contributors:Map<string, number> = new Map();
     readmeLength: number = -1;
     rampUp: number = -1;
     hasLicense: boolean = false;
     busFactor: number = -1;
+    netScore: number = -1;
 
     setContributors(contributors: Map<string, number>) {
         this.contributors = contributors;
@@ -50,6 +59,30 @@ class Package {
 
     setBusFactor(busFactor: number) {
         this.busFactor = busFactor;
+    }
+
+    setURL(url: string) {
+        this.url = url
+    }
+
+    printMetrics() {
+        const output = {
+            URL : this.url,                             
+            NET_SCORE: this.netScore,                   // This metric has a field, but is not implemented
+            RAMP_UP_SCORE: this.rampUp,                 // This metric has a field, but is not implemented 
+            CORRECTNESS_SCORE: -1,                      // This metric doesn't seem have a field in this class yet
+            BUS_FACTOR_SCORE: this.busFactor,           // Implemented!
+            RESPONSIVE_MAINTAINER_SCORE: -1,            // This metric doesn't seem have a field in this class yet
+            LICENSE_SCORE: Number(this.hasLicense)      // Implemented!
+        }
+
+        const stringify = ndjson.stringify();
+        stringify.write(output);
+        stringify.end();  // Close the NDJSON serialization
+
+        stringify.on('data', (line: string) => {
+          process.stdout.write(line);
+        });
     }
   }
 
@@ -100,6 +133,9 @@ function calculateRampUp(readmeLength: number) {
 
     rampUpVal = readmeVal;
 
+    // Rounds to rf decimal places without padding with 0s (rf defined globally)
+    rampUpVal = Math.round(rampUpVal * (10 ** rf)) / (10 ** rf);
+
     return rampUpVal
 }
 
@@ -107,11 +143,11 @@ async function readReadmeFile(repoUrl: string) {
     const readmePath = `${repoUrl}/README.md`; // Adjust the filename if necessary
     try {
       const readmeContent = await fs.promises.readFile(readmePath, 'utf-8');
-      console.log('README Content:');
-      console.log(readmeContent);
+      //console.log('README Content:');
+      //console.log(readmeContent);
       return `${readmeContent}`;
     } catch (error) {
-      console.error('Error reading README:', error);
+      //console.error('Error reading README:', error);
       return '';
     }
   }
@@ -153,6 +189,9 @@ function calculateBusFactor(readmeLength: number, contributors: Map<string, numb
 
     // Bus factor is average of readmeVal and contributorVal
     busFactorVal = (readmeVal + contributorsVal) / 2;
+
+    // Rounds to rf decimal places without padding with 0s (rf defined globally)
+    busFactorVal = Math.round(busFactorVal * (10 ** rf)) / (10 ** rf);
 
     return busFactorVal
 }
@@ -216,6 +255,7 @@ async function getPackageObject(owner: string, packageName: string, token: strin
 }
 
 async function cloneRepository(repoUrl: string, packageObj: Package) {
+    packageObj.setURL(repoUrl);
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), localDir));
     logger.info(`made directory: ${dir}`);
     fs.readdirSync(dir);
@@ -284,14 +324,16 @@ const exampleUrl = new Url("https://github.com/mghera02/461Group2", "461Group2",
 let packageObj = new Package();
 
 getPackageObject(exampleUrl.getPackageOwner(), exampleUrl.packageName, githubToken, packageObj)
-    .catch((error) => {
-        logger.error(`Error while retrieving package object: ${error.message}`);
-    });
+    .then((returnedPackageObject) => {
+        packageObj = returnedPackageObject;
+        //console.log(packageObj);
+    })
 
 const localDir = './fetch_url_cloned_repos';
 cloneRepository(exampleUrl.url, packageObj).then ((response) => {
     packageObj = response;
-    console.log(packageObj);
+    //console.log(packageObj);
+    packageObj.printMetrics();
 });
 
 module.exports = {

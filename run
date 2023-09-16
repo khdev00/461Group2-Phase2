@@ -12,6 +12,8 @@ if [ "$1" == "install" ]; then
   npm install axios || { echo "Failed to install axios"; exit 1; }
   npm install @types/jest || { echo "Failed to install @types/jest"; exit 1; }
   npm install ts-jest || { echo "Failed to install ts-jest"; exit 1; }
+  npm install ndjson || { echo "Failed to install ndjson"; exit 1; }
+  npm install @types/ndjson || { echo "Failed to install ndjson"; exit 1; }
 
   # Setup Linting (assuming VSCode will handle this, no npm install required)
 
@@ -37,8 +39,8 @@ elif [ "$1" == "test" ]; then
 else
   # Placeholder for URL_FILE processing command
   if [[ "$1" =~ ^/ ]]; then
-    echo "Processing file $1..."
-    # Add your TypeScript script execution command here to process the URL file
+    #echo "Processing file $1..."
+    ts-node ./run_URL_FILE/fetch_url.ts
     exit 0
   else
     echo "Invalid arguments"
