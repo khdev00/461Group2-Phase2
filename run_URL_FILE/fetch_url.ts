@@ -25,7 +25,7 @@ const logger = winston.createLogger({
     ],
   });
 
-export class Package {
+class Package {
     contributors:Map<string, number> = new Map();
     readmeLength: number = -1;
     rampUp: number = -1;
@@ -72,7 +72,7 @@ export class Package {
     }
   }
 
-  function retrieveGithubKey() {
+function retrieveGithubKey() {
     const githubApiKey = process.env.GITHUB_TOKEN;
     if (!githubApiKey) {
         const error = new Error("GitHub API key not found in environment variables.");
@@ -169,8 +169,9 @@ async function getPackageObject(owner: string, packageName: string, token: strin
             const contributors = response.data.map((contributor: any) => contributor.login);
         })
         .catch ((err) => {
-            console.error('Error:', err);
-        });*/
+            logger.error(`Error: ${err}`);
+            packageObj.setContributors([]);
+        });
 
     /*await axios.get(`https://api.github.com/repos/${owner}/${packageName}/readme`,{headers,})
         .then((response) => {
@@ -178,7 +179,7 @@ async function getPackageObject(owner: string, packageName: string, token: strin
             packageObj.setReadmeLength(readmeContent.length);
         })
         .catch ((err) => {
-            console.error('Error:', err);
+            logger.error(`Error: ${err}`);
             packageObj.setReadmeLength(0);
         });*/
 
@@ -191,6 +192,26 @@ async function getPackageObject(owner: string, packageName: string, token: strin
             packageObj.setHasLicense(false);
         });
 
+    if (packageObj.contributors) {
+        logger.info(`Contributors retrieved for ${owner}/${packageName}`);
+    } else {
+        logger.error(`Failed to retrieve contributors for ${owner}/${packageName}`);
+    }
+
+    if (packageObj.readmeLength) {
+        logger.info(`Readme length retrieved for ${owner}/${packageName}`);
+    } else {
+        logger.error(`Failed to retrieve readme length for ${owner}/${packageName}`);
+    }
+
+    if (packageObj.contributors && packageObj.readmeLength) {
+        logger.info(`Package {
+            contributors: [
+                ${packageObj.contributors ? Array.from(packageObj.contributors).map(([contributor, value]) => `${contributor}: ${value}`).join(',\n                ') : ''}
+            ],
+            readmeLength: ${packageObj.readmeLength}
+        }`);
+    }
     return packageObj;
 }
 
@@ -211,7 +232,24 @@ async function cloneRepository(repoUrl: string, packageObj: Package) {
     fs.readdirSync(dir);
     let repoAuthors = new Map();
     await git.log({fs, dir}) 
-    .then((response) => {
+    .then((commits) => {
+    logger.info(`Git log retrieved for ${repoUrl}`);
+    commits.forEach((commit, index) => {
+        logger.info(`Commit ${index + 1}:`);
+        logger.info(`OID: ${commit.oid}`);
+        logger.info(`Message: ${commit.commit.message}`);
+        logger.info(`Parent: ${commit.commit.parent.join(', ')}`);
+        logger.info(`Tree: ${commit.commit.tree}`);
+        logger.info(`Author: ${commit.commit.author.name} <${commit.commit.author.email}>`);
+        logger.info(`Committer: ${commit.commit.committer.name} <${commit.commit.committer.email}>`);
+        logger.info(`GPG Signature: ${commit.commit.gpgsig}`);
+    });
+    })
+    .catch((error) => {
+        logger.error(`Failed to retrieve git log for ${repoUrl}: ${error.message}`);
+    });
+
+    /*.then((response) => {
         // Get commit authors
         response.forEach(function (val) {
             let authorEmail = `${val.commit.author.email}`;
@@ -223,10 +261,10 @@ async function cloneRepository(repoUrl: string, packageObj: Package) {
                 }
             }
         }); 
-    })
+    })*/
 
     packageObj.setContributors(repoAuthors);
-    logger.info(repoAuthors);
+    console.log(repoAuthors);
 
     // Get readme length
     await readReadmeFile(dir).then ((response) => {
@@ -246,6 +284,9 @@ const exampleUrl = new Url("https://github.com/mghera02/461Group2", "461Group2",
 let packageObj = new Package();
 
 getPackageObject(exampleUrl.getPackageOwner(), exampleUrl.packageName, githubToken, packageObj)
+    .catch((error) => {
+        logger.error(`Error while retrieving package object: ${error.message}`);
+    });
 
 const localDir = './fetch_url_cloned_repos';
 cloneRepository(exampleUrl.url, packageObj).then ((response) => {
@@ -256,3 +297,6 @@ cloneRepository(exampleUrl.url, packageObj).then ((response) => {
 module.exports = {
     retrieveGithubKey,
     getPackageObject,
+    cloneRepository,
+    calculateBusFactor
+};
