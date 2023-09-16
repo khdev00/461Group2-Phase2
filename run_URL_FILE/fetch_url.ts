@@ -69,7 +69,7 @@ export class Package {
         const output = {
             URL : this.url,                             
             NET_SCORE: this.netScore,                   // This metric has a field, but is not implemented
-            RAMP_UP_SCORE: this.rampUp,                 // Implemented!
+            RAMP_UP_SCORE: this.rampUp,                 // This metric has a field, but is not implemented 
             CORRECTNESS_SCORE: -1,                      // This metric doesn't seem have a field in this class yet
             BUS_FACTOR_SCORE: this.busFactor,           // Implemented!
             RESPONSIVE_MAINTAINER_SCORE: -1,            // This metric doesn't seem have a field in this class yet
@@ -81,7 +81,7 @@ export class Package {
         stringify.end();  // Close the NDJSON serialization
 
         stringify.on('data', (line: string) => {
-          process.stdout.write(line + '\n');
+          process.stdout.write(line);
         });
     }
   }
@@ -143,11 +143,11 @@ async function readReadmeFile(repoUrl: string) {
     const readmePath = `${repoUrl}/README.md`; // Adjust the filename if necessary
     try {
       const readmeContent = await fs.promises.readFile(readmePath, 'utf-8');
-      console.log('README Content:');
-      console.log(readmeContent);
+      //console.log('README Content:');
+      //console.log(readmeContent);
       return `${readmeContent}`;
     } catch (error) {
-      console.error('Error reading README:', error);
+      //console.error('Error reading README:', error);
       return '';
     }
   }
@@ -288,13 +288,14 @@ let packageObj = new Package();
 getPackageObject(exampleUrl.getPackageOwner(), exampleUrl.packageName, githubToken, packageObj)
     .then((returnedPackageObject) => {
         packageObj = returnedPackageObject;
-        console.log(packageObj);
+        //console.log(packageObj);
     })
 
 const localDir = './fetch_url_cloned_repos';
 cloneRepository(exampleUrl.url, packageObj).then ((response) => {
     packageObj = response;
-    console.log(packageObj);
+    //console.log(packageObj);
+    packageObj.printMetrics();
 });
 
 module.exports = {
@@ -302,5 +303,3 @@ module.exports = {
     getPackageObject,
     cloneRepository
 };
-
-packageObj.printMetrics();
