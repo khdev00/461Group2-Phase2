@@ -340,5 +340,6 @@ module.exports = {
     retrieveGithubKey,
     getPackageObject,
     cloneRepository,
-    calculateBusFactor
+    calculateBusFactor,
+    calculateRampUp
 };
