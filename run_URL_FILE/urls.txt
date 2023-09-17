@@ -1,0 +1,20 @@
+https://www.npmjs.com/package/express
+https://www.npmjs.com/package/lodash
+https://github.com/tensorflow/tensorflow
+https://github.com/angular/angular
+https://github.com/microsoft/TypeScript
+https://github.com/facebook/react
+https://www.npmjs.com/package/mongoose
+https://www.npmjs.com/package/request
+https://github.com/nodejs/node
+https://github.com/vuejs/vue
+https:/invalidurl,com
+http:://doublecolon.com
+http://space inurl.com
+http:///missinghostname.com
+ftp:/invalidftpurl.com
+https;//wrongseparator.com
+www.noprotocol.com
+http://@notvalid.com
+https:////toomanyslashes.com
+http://.invalidtld
