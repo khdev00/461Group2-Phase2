@@ -218,29 +218,18 @@ async function getPackageObject(owner: string, packageName: string, token: strin
         const contributorsData = response.data;
         const contributorsMap = new Map<string, number>();
 
-        // Iterate over contributorsData and add to the map
         contributorsData.forEach((contributor: any) => {
             const username = contributor.login;
             const contributions = contributor.contributions; 
             contributorsMap.set(username, contributions);
         });
 
-        // Update packageObj with contributors map
         packageObj.setContributors(contributorsMap);
     })
     .catch((err) => {
         logger.error(`Error: ${err}`);
-        packageObj.setContributors(new Map()); // Clear the map in case of an error
+        packageObj.setContributors(new Map()); 
     });
-
-    /*(await axios.get(`https://api.github.com/repos/${owner}/${packageName}/contributors`,{headers,})
-        .then((response) => {
-            const contributors = response.data.map((contributor: any) => contributor.login);
-        })
-        .catch ((err) => {
-            logger.error(`Error: ${err}`);
-            packageObj.setContributors([]);
-        });*/
 
     await axios.get(`https://api.github.com/repos/${owner}/${packageName}/readme`,{headers,})
         .then((response) => {
@@ -254,10 +243,12 @@ async function getPackageObject(owner: string, packageName: string, token: strin
 
     await axios.get(`https://api.github.com/repos/${owner}/${packageName}/license`,{headers,})
         .then((response) => {
-            packageObj.setHasLicense(true);
+            if (response.status == 200) {
+                packageObj.setHasLicense(true);
+            }
         })
         .catch ((err) => {
-            //console.error('Error:', err);
+            //logger.error(`Failed to get license status: ${err}`);
             packageObj.setHasLicense(false);
         });
 
@@ -273,14 +264,6 @@ async function getPackageObject(owner: string, packageName: string, token: strin
         logger.error(`Failed to retrieve readme length for ${owner}/${packageName}`);
     }
 
-    /*if (packageObj.contributors && packageObj.readmeLength) {
-        logger.info(`Package {
-            contributors: [
-                ${packageObj.contributors ? Array.from(packageObj.contributors).map(([contributor, value]) => `${contributor}: ${value}`).join(',\n                ') : ''}
-            ],
-            readmeLength: ${packageObj.readmeLength}
-        }`);
-    }*/
     return packageObj;
 }
 
@@ -357,13 +340,11 @@ let packageObj = new Package();
 getPackageObject(exampleUrl.getPackageOwner(), exampleUrl.packageName, githubToken, packageObj)
     .then((returnedPackageObject) => {
         packageObj = returnedPackageObject;
-        //console.log(packageObj);
     })
 
 const localDir = './fetch_url_cloned_repos';
 cloneRepository(exampleUrl.url, packageObj).then ((response) => {
     packageObj = response;
-    //console.log(packageObj);
     packageObj.printMetrics();
 });
 
