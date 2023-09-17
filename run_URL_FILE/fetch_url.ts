@@ -82,8 +82,8 @@ export class Package {
     printMetrics() {
         const output = {
             URL : this.url,                             
-            NET_SCORE: this.netScore,                                    // This metric has a field, but is not implemented
-            RAMP_UP_SCORE: this.rampUp,                                  // This metric has a field, but is not implemented 
+            NET_SCORE: this.netScore,                                    // Implemented!
+            RAMP_UP_SCORE: this.rampUp,                                  // Implemented! 
             CORRECTNESS_SCORE: this.correctness,                         // Implemented!
             BUS_FACTOR_SCORE: this.busFactor,                            // Implemented!
             RESPONSIVE_MAINTAINER_SCORE: this.responsiveMaintainer,      // Implemented!
@@ -239,7 +239,6 @@ async function getOpenIssuesCount(owner: string, packageName: string, token: str
     const headers = {
         Authorization: `Bearer ${token}`,
     };
-
     try {
         const response = await axios.get(`https://api.github.com/repos/${owner}/${packageName}/issues?state=open`, { headers });
         const openIssuesCount = response.data.length || 0; 
@@ -366,7 +365,8 @@ async function calculateResponsiveMaintainer(owner: string, packageName: string,
 
 function calculateNetScore(packageObj: Package) {
     let netScore = 0.4 * packageObj.responsiveMaintainer + 0.3 * packageObj.rampUp + 0.15 * packageObj.correctness + 0.1 * packageObj.busFactor; //+ 0.05 * packageObj.hasLicense;
-    return netScore;
+    let roundedNetScore = Math.round(netScore * (10 ** rf)) / (10 ** rf);
+    return roundedNetScore;
 }
 
 // Useful for looking at which data you can access:
