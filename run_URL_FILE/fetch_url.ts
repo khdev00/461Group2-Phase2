@@ -80,13 +80,6 @@ export class Package {
         this.contributors.forEach((contributions, contributor) => {
             logger.info(`  ${contributor}: ${contributions}`);
         });
-        logger.info(`URL: ${this.url}`);
-        logger.info(`NET_SCORE: ${this.netScore}`);
-        logger.info(`RAMP_UP_SCORE: ${this.rampUp}`);
-        logger.info(`CORRECTNESS_SCORE: -1`);
-        logger.info(`BUS_FACTOR_SCORE: ${this.busFactor}`);
-        logger.info(`RESPONSIVE_MAINTAINER_SCORE: -1`);
-        logger.info(`LICENSE_SCORE: ${Number(this.hasLicense)}`);
 
         const stringify = ndjson.stringify();
         stringify.write(output);
@@ -95,6 +88,14 @@ export class Package {
         stringify.on('data', (line: string) => {
           process.stdout.write(line);
         });
+        
+        logger.info(`URL: ${this.url}`);
+        logger.info(`NET_SCORE: ${this.netScore}`);
+        logger.info(`RAMP_UP_SCORE: ${this.rampUp}`);
+        logger.info(`CORRECTNESS_SCORE: -1`);
+        logger.info(`BUS_FACTOR_SCORE: ${this.busFactor}`);
+        logger.info(`RESPONSIVE_MAINTAINER_SCORE: -1`);
+        logger.info(`LICENSE_SCORE: ${Number(this.hasLicense)}`);
     }
   }
 
@@ -142,7 +143,6 @@ function calculateRampUp(readmeLength: number) {
     // 0 is very long or very short
     let readmeDifference = Math.abs(targetReadmeLength -  readmeLength);
     let readmeVal = 100 - (readmeDifference / longestReadmeLength) * 100;
-
     rampUpVal = readmeVal;
 
     // Rounds to rf decimal places without padding with 0s (rf defined globally)
@@ -238,7 +238,7 @@ async function getPackageObject(owner: string, packageName: string, token: strin
         })
         .catch ((err) => {
             logger.error(`Error: ${err}`);
-            //packageObj.setReadmeLength(0);
+            packageObj.setReadmeLength(-1);
         });
 
     await axios.get(`https://api.github.com/repos/${owner}/${packageName}/license`,{headers,})
@@ -301,31 +301,9 @@ async function cloneRepository(repoUrl: string, packageObj: Package) {
     .catch((error) => {
         logger.error(`Failed to retrieve git log for ${repoUrl}: ${error.message}`);
     });
-
-    /*.then((response) => {
-        // Get commit authors
-        response.forEach(function (val) {
-            let authorEmail = `${val.commit.author.email}`;
-            if(!authorEmail.includes('github')) {
-                if(repoAuthors.get(authorEmail) !== undefined) {
-                    repoAuthors.set(authorEmail, repoAuthors.get(authorEmail) + 1);
-                } else {
-                    repoAuthors.set(authorEmail, 1);
-                }
-            }
-        }); 
-    })*/
-
-    //packageObj.setContributors(repoAuthors);
-    //console.log(repoAuthors);
-
-    // Get readme length
-    /*await readReadmeFile(dir).then ((response) => {
-        packageObj.setReadmeLength(response.length);
-    });*/ 
     
     packageObj.setBusFactor(calculateBusFactor(packageObj.readmeLength, packageObj.contributors));
-    packageObj.setRampUp(packageObj.readmeLength);
+    packageObj.setRampUp(calculateRampUp(packageObj.readmeLength));
     return packageObj;
 }
   
