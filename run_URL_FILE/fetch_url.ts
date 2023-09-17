@@ -75,6 +75,18 @@ export class Package {
             RESPONSIVE_MAINTAINER_SCORE: -1,            // This metric doesn't seem have a field in this class yet
             LICENSE_SCORE: Number(this.hasLicense)      // Implemented!
         }
+        logger.info(`README Length: ${this.readmeLength}`);
+        logger.info('Contributors:');
+        this.contributors.forEach((contributions, contributor) => {
+            logger.info(`  ${contributor}: ${contributions}`);
+        });
+        logger.info(`URL: ${this.url}`);
+        logger.info(`NET_SCORE: ${this.netScore}`);
+        logger.info(`RAMP_UP_SCORE: ${this.rampUp}`);
+        logger.info(`CORRECTNESS_SCORE: -1`);
+        logger.info(`BUS_FACTOR_SCORE: ${this.busFactor}`);
+        logger.info(`RESPONSIVE_MAINTAINER_SCORE: -1`);
+        logger.info(`LICENSE_SCORE: ${Number(this.hasLicense)}`);
 
         const stringify = ndjson.stringify();
         stringify.write(output);
@@ -189,10 +201,8 @@ function calculateBusFactor(readmeLength: number, contributors: Map<string, numb
 
     // Bus factor is average of readmeVal and contributorVal
     busFactorVal = (readmeVal + contributorsVal) / 2;
-
     // Rounds to rf decimal places without padding with 0s (rf defined globally)
     busFactorVal = Math.round(busFactorVal * (10 ** rf)) / (10 ** rf);
-
     return busFactorVal
 }
 
@@ -202,6 +212,26 @@ async function getPackageObject(owner: string, packageName: string, token: strin
     const headers = {
         Authorization: `Bearer ${token}`,
     };
+    
+    await axios.get(`https://api.github.com/repos/${owner}/${packageName}/contributors`, { headers })
+    .then((response) => {
+        const contributorsData = response.data;
+        const contributorsMap = new Map<string, number>();
+
+        // Iterate over contributorsData and add to the map
+        contributorsData.forEach((contributor: any) => {
+            const username = contributor.login;
+            const contributions = contributor.contributions; 
+            contributorsMap.set(username, contributions);
+        });
+
+        // Update packageObj with contributors map
+        packageObj.setContributors(contributorsMap);
+    })
+    .catch((err) => {
+        logger.error(`Error: ${err}`);
+        packageObj.setContributors(new Map()); // Clear the map in case of an error
+    });
 
     /*(await axios.get(`https://api.github.com/repos/${owner}/${packageName}/contributors`,{headers,})
         .then((response) => {
@@ -210,17 +240,17 @@ async function getPackageObject(owner: string, packageName: string, token: strin
         .catch ((err) => {
             logger.error(`Error: ${err}`);
             packageObj.setContributors([]);
-        });
+        });*/
 
-    /*await axios.get(`https://api.github.com/repos/${owner}/${packageName}/readme`,{headers,})
+    await axios.get(`https://api.github.com/repos/${owner}/${packageName}/readme`,{headers,})
         .then((response) => {
             const readmeContent = Buffer.from(response.data.content, 'base64').toString('utf-8');
             packageObj.setReadmeLength(readmeContent.length);
         })
         .catch ((err) => {
             logger.error(`Error: ${err}`);
-            packageObj.setReadmeLength(0);
-        });*/
+            //packageObj.setReadmeLength(0);
+        });
 
     await axios.get(`https://api.github.com/repos/${owner}/${packageName}/license`,{headers,})
         .then((response) => {
@@ -237,20 +267,20 @@ async function getPackageObject(owner: string, packageName: string, token: strin
         logger.error(`Failed to retrieve contributors for ${owner}/${packageName}`);
     }
 
-    if (packageObj.readmeLength) {
+    if (packageObj.readmeLength != -1) {
         logger.info(`Readme length retrieved for ${owner}/${packageName}`);
     } else {
         logger.error(`Failed to retrieve readme length for ${owner}/${packageName}`);
     }
 
-    if (packageObj.contributors && packageObj.readmeLength) {
+    /*if (packageObj.contributors && packageObj.readmeLength) {
         logger.info(`Package {
             contributors: [
                 ${packageObj.contributors ? Array.from(packageObj.contributors).map(([contributor, value]) => `${contributor}: ${value}`).join(',\n                ') : ''}
             ],
             readmeLength: ${packageObj.readmeLength}
         }`);
-    }
+    }*/
     return packageObj;
 }
 
@@ -273,8 +303,8 @@ async function cloneRepository(repoUrl: string, packageObj: Package) {
     let repoAuthors = new Map();
     await git.log({fs, dir}) 
     .then((commits) => {
-    logger.info(`Git log retrieved for ${repoUrl}`);
-    commits.forEach((commit, index) => {
+        logger.info(`Git log retrieved for ${repoUrl}`);
+    /*commits.forEach((commit, index) => {
         logger.info(`Commit ${index + 1}:`);
         logger.info(`OID: ${commit.oid}`);
         logger.info(`Message: ${commit.commit.message}`);
@@ -283,7 +313,7 @@ async function cloneRepository(repoUrl: string, packageObj: Package) {
         logger.info(`Author: ${commit.commit.author.name} <${commit.commit.author.email}>`);
         logger.info(`Committer: ${commit.commit.committer.name} <${commit.commit.committer.email}>`);
         logger.info(`GPG Signature: ${commit.commit.gpgsig}`);
-    });
+    });*/
     })
     .catch((error) => {
         logger.error(`Failed to retrieve git log for ${repoUrl}: ${error.message}`);
@@ -303,15 +333,16 @@ async function cloneRepository(repoUrl: string, packageObj: Package) {
         }); 
     })*/
 
-    packageObj.setContributors(repoAuthors);
-    console.log(repoAuthors);
+    //packageObj.setContributors(repoAuthors);
+    //console.log(repoAuthors);
 
     // Get readme length
-    await readReadmeFile(dir).then ((response) => {
+    /*await readReadmeFile(dir).then ((response) => {
         packageObj.setReadmeLength(response.length);
-    });
+    });*/ 
     
     packageObj.setBusFactor(calculateBusFactor(packageObj.readmeLength, packageObj.contributors));
+    packageObj.setRampUp(packageObj.readmeLength);
     return packageObj;
 }
   
