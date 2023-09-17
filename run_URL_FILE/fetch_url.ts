@@ -158,6 +158,7 @@ function calculateRampUp(readmeLength: number) {
     let readmeDifference = Math.abs(targetReadmeLength -  readmeLength);
     let readmeVal = 100 - (readmeDifference / longestReadmeLength) * 100;
     rampUpVal = readmeVal;
+    rampUpVal /= 100;
 
     // Rounds to rf decimal places without padding with 0s (rf defined globally)
     rampUpVal = Math.round(rampUpVal * (10 ** rf)) / (10 ** rf);
@@ -214,7 +215,7 @@ function calculateBusFactor(readmeLength: number, contributors: Map<string, numb
     contributorsVal = (contributorsNum/20 * 100) / 3 + 2 * contributorsVal / 3;
 
     // Bus factor is average of readmeVal and contributorVal
-    busFactorVal = (readmeVal + contributorsVal) / 2;
+    busFactorVal = ((readmeVal + contributorsVal) / 2)/100;
     // Rounds to rf decimal places without padding with 0s (rf defined globally)
     busFactorVal = Math.round(busFactorVal * (10 ** rf)) / (10 ** rf);
     return busFactorVal
@@ -365,8 +366,9 @@ async function calculateResponsiveMaintainer(owner: string, packageName: string,
 }
 
 function calculateNetScore(packageObj: Package) {
-    let netScore = 0.4 * packageObj.responsiveMaintainer + 0.3 * packageObj.rampUp + 0.15 * packageObj.correctness + 0.1 * packageObj.busFactor; //+ 0.05 * packageObj.hasLicense;
-    return netScore;
+    let netScore = 0.4 * packageObj.responsiveMaintainer + 0.3 * packageObj.rampUp + 0.15 * packageObj.correctness + 0.1 * packageObj.busFactor + 0.05 * Number(packageObj.hasLicense);
+    
+    return Math.round(netScore * (10 ** rf)) / (10 ** rf);
 }
 
 // Useful for looking at which data you can access:
@@ -427,8 +429,9 @@ async function getPackageObject(owner: string, packageName: string, token: strin
         logger.error(`Failed to retrieve readme length for ${owner}/${packageName}`);
     }
 
-    const correctness = await calculateCorrectness(owner, packageName, token);
-    packageObj.setCorrectness(correctness);
+    await calculateCorrectness(owner, packageName, token).then((correctness) => {
+        packageObj.setCorrectness(correctness);
+    });
 
     const responsiveMaintainer = await calculateResponsiveMaintainer(owner, packageName, token);
     packageObj.setResponsiveMaintainer(responsiveMaintainer);
@@ -437,6 +440,7 @@ async function getPackageObject(owner: string, packageName: string, token: strin
 
 async function cloneRepository(repoUrl: string, packageObj: Package) {
     packageObj.setURL(repoUrl);
+    const localDir = './fetch_url_cloned_repos';
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), localDir));
     logger.info(`made directory: ${dir}`);
     fs.readdirSync(dir);
@@ -475,23 +479,29 @@ async function cloneRepository(repoUrl: string, packageObj: Package) {
     packageObj.setNetScore(calculateNetScore(packageObj));
     return packageObj;
 }
+
+async function calculateAllMetrics(packageObj: Package, exampleUrl: Url) {
+    await getPackageObject(exampleUrl.getPackageOwner(), exampleUrl.packageName, githubToken, packageObj)
+        .then((returnedPackageObject) => {
+            packageObj = returnedPackageObject;
+        })
+
+    await cloneRepository(exampleUrl.url, packageObj).then ((response) => {
+        packageObj = response;
+    });
+
+    return packageObj;
+}
   
 // Usage example
 const githubToken = retrieveGithubKey();
 //const exampleUrl = new Url("https://github.com/cloudinary/cloudinary_npm", "cloudinary_npm", "cloudinary");
-const exampleUrl = new Url("https://github.com/mghera02/461Group2", "461Group2", "mghera02");
-//const exampleUrl = new Url("https://github.com/vishnumaiea/ptScheduler", "ptScheduler", "vishnumaiea");
+//const exampleUrl = new Url("https://github.com/mghera02/461Group2", "461Group2", "mghera02");
+const exampleUrl = new Url("https://github.com/vishnumaiea/ptScheduler", "ptScheduler", "vishnumaiea");
 
 let packageObj = new Package();
 
-getPackageObject(exampleUrl.getPackageOwner(), exampleUrl.packageName, githubToken, packageObj)
-    .then((returnedPackageObject) => {
-        packageObj = returnedPackageObject;
-    })
-
-const localDir = './fetch_url_cloned_repos';
-cloneRepository(exampleUrl.url, packageObj).then ((response) => {
-    packageObj = response;
+calculateAllMetrics(packageObj, exampleUrl).then ((packageObj) => {
     packageObj.printMetrics();
 });
 
