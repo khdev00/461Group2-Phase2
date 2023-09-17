@@ -39,6 +39,8 @@ export class Package {
     rampUp: number = -1;
     hasLicense: boolean = false;
     busFactor: number = -1;
+    correctness: number = -1;
+    responsiveMaintainer: number = -1;
     netScore: number = -1;
 
     setContributors(contributors: Map<string, number>) {
@@ -65,15 +67,27 @@ export class Package {
         this.url = url
     }
 
+    setCorrectness(correctness: number) {
+        this.correctness = correctness;
+    }
+
+    setResponsiveMaintainer(responsiveMaintainer: number) {
+        this.responsiveMaintainer = responsiveMaintainer;
+    }
+
+    setNetScore(netScore: number) {
+        this.netScore = netScore;
+    }
+
     printMetrics() {
         const output = {
             URL : this.url,                             
-            NET_SCORE: this.netScore,                   // This metric has a field, but is not implemented
-            RAMP_UP_SCORE: this.rampUp,                 // This metric has a field, but is not implemented 
-            CORRECTNESS_SCORE: -1,                      // This metric doesn't seem have a field in this class yet
-            BUS_FACTOR_SCORE: this.busFactor,           // Implemented!
-            RESPONSIVE_MAINTAINER_SCORE: -1,            // This metric doesn't seem have a field in this class yet
-            LICENSE_SCORE: Number(this.hasLicense)      // Implemented!
+            NET_SCORE: this.netScore,                                    // This metric has a field, but is not implemented
+            RAMP_UP_SCORE: this.rampUp,                                  // This metric has a field, but is not implemented 
+            CORRECTNESS_SCORE: this.correctness,                         // Implemented!
+            BUS_FACTOR_SCORE: this.busFactor,                            // Implemented!
+            RESPONSIVE_MAINTAINER_SCORE: this.responsiveMaintainer,      // Implemented!
+            LICENSE_SCORE: Number(this.hasLicense)                       // Implemented!
         }
         logger.info(`README Length: ${this.readmeLength}`);
         logger.info('Contributors:');
@@ -88,13 +102,13 @@ export class Package {
         stringify.on('data', (line: string) => {
           process.stdout.write(line);
         });
-        
+
         logger.info(`URL: ${this.url}`);
         logger.info(`NET_SCORE: ${this.netScore}`);
         logger.info(`RAMP_UP_SCORE: ${this.rampUp}`);
-        logger.info(`CORRECTNESS_SCORE: -1`);
+        logger.info(`CORRECTNESS_SCORE: ${this.correctness}`);
         logger.info(`BUS_FACTOR_SCORE: ${this.busFactor}`);
-        logger.info(`RESPONSIVE_MAINTAINER_SCORE: -1`);
+        logger.info(`RESPONSIVE_MAINTAINER_SCORE: ${this.responsiveMaintainer}`);
         logger.info(`LICENSE_SCORE: ${Number(this.hasLicense)}`);
     }
   }
@@ -206,6 +220,155 @@ function calculateBusFactor(readmeLength: number, contributors: Map<string, numb
     return busFactorVal
 }
 
+async function getUserStars(owner: string, packageName: string, token: string) {
+    const headers = {
+        Authorization: `Bearer ${token}`,
+    };
+
+    try {
+        const response = await axios.get(`https://api.github.com/repos/${owner}/${packageName}`, { headers });
+        const stars = response.data.stargazers_count || 0; 
+        return stars;
+    } catch (error) {
+        logger.error(`Error fetching star count: ${error}`);
+        return 0; 
+    }
+}
+
+async function getOpenIssuesCount(owner: string, packageName: string, token: string) {
+    const headers = {
+        Authorization: `Bearer ${token}`,
+    };
+
+    try {
+        const response = await axios.get(`https://api.github.com/repos/${owner}/${packageName}/issues?state=open`, { headers });
+        const openIssuesCount = response.data.length || 0; 
+        return openIssuesCount;
+    } catch (error) {
+        logger.error(`Error fetching open issues count: ${error}`);
+        return 0; 
+    }
+}
+
+async function calculateCorrectness(owner: string, packageName: string, token: string) {
+    try {
+        const stars = await getUserStars(owner, packageName, token);
+        const openIssues = await getOpenIssuesCount(owner, packageName, token);
+
+        const starsWeight = 0.4;
+        const issuesWeight = 0.6;
+        const correctnessScore = (stars * starsWeight / 100) + (0.6 - (0.6 * openIssues * issuesWeight / 100));
+
+        return Math.round(correctnessScore * (10 ** rf)) / (10 ** rf);
+
+    } catch (error) {
+        logger.error(`Error calculating correctness metric: ${error}`);
+        return -1; 
+    }
+}
+
+async function getCommitFrequency(owner: string, packageName: string, token: string) {
+    const headers = {
+        Authorization: `Bearer ${token}`,
+    };
+    try {
+        const response = await axios.get(`https://api.github.com/repos/${owner}/${packageName}/commits`, { headers });
+
+        const commitData = response.data;
+        if (commitData.length < 2) {
+            //not enough commits for frequency calculation
+            return 0;
+        }
+
+        //sort commitData by commit timestamp in ascending order
+        commitData.sort((a: any, b: any) => {
+            const timestampA = new Date(a.commit.author.date).getTime();
+            const timestampB = new Date(b.commit.author.date).getTime();
+            return timestampA - timestampB;
+        });
+
+        //calculate the average time between commits in milliseconds
+        let totalTimeInterval = 0;
+        for (let i = 1; i < commitData.length; i++) {
+            const commitDate = new Date(commitData[i].commit.author.date);
+            const prevCommitDate = new Date(commitData[i - 1].commit.author.date);
+            const timeInterval = commitDate.getTime() - prevCommitDate.getTime();
+            totalTimeInterval += timeInterval;
+        }
+
+        const averageTimeInterval = totalTimeInterval / (commitData.length - 1);
+        const frequency = ((1000 * 60 * 60 * 24 * 365) - averageTimeInterval) / (1000 * 60 * 60 * 24 * 365);
+
+        return frequency;
+    } catch (error) {
+        logger.error(`Error fetching commit frequency: ${error}`);
+        return 0; 
+    }
+}
+
+async function getIssueResolutionTime(owner: string, packageName: string, token: string) {
+    const headers = {
+        Authorization: `Bearer ${token}`,
+    };
+
+    try {
+        const response = await axios.get(`https://api.github.com/repos/${owner}/${packageName}/issues?state=closed`, { headers });
+
+        const issueData = response.data;
+        if (issueData.length === 0) {
+            return 0;
+        }
+
+        //calculate the average time between issue creation and resolution in milliseconds
+        let totalTimeInterval = 0;
+        let resolvedIssueCount = 0;
+        for (const issue of issueData) {
+            if (issue.state === 'closed' && issue.created_at && issue.closed_at) {
+                const createDate = new Date(issue.created_at);
+                const resolveDate = new Date(issue.closed_at);
+                const timeInterval = resolveDate.getTime() - createDate.getTime();
+                totalTimeInterval += timeInterval;
+                resolvedIssueCount++;
+            }
+        }
+        logger.info(`issues: ${resolvedIssueCount}`);
+        if (resolvedIssueCount === 0) {
+            return 0;
+        }
+
+        const averageTimeInterval = totalTimeInterval / resolvedIssueCount;
+        const frequency = ((1000 * 60 * 60 * 24 * 365) - averageTimeInterval) / (1000 * 60 * 60 * 24 * 365);
+
+        return frequency;
+    } catch (error) {
+        logger.error(`Error fetching issue resolution time: ${error}`);
+        return 0;
+    }
+}
+
+async function calculateResponsiveMaintainer(owner: string, packageName: string, token: string) {
+    try {
+        const commitFrequency = await getCommitFrequency(owner, packageName, token);
+        const issueResolutionTime = await getIssueResolutionTime(owner, packageName, token);
+        //logger.info(`commit freq: ${commitFrequency}`);
+        //logger.info(`issue resol: ${issueResolutionTime}`);
+
+        const commitFrequencyWeight = 0.3;
+        const issueResolutionWeight = 0.7;
+        const responsiveMaintainerScore = commitFrequency * commitFrequencyWeight + issueResolutionTime * issueResolutionWeight;
+
+        return Math.round(responsiveMaintainerScore * (10 ** rf)) / (10 ** rf);
+    } catch (error) {
+        logger.error(`Error calculating responsive maintainer score: ${error}`);
+        return -1; 
+    }
+}
+
+function calculateNetScore(packageObj: Package) {
+    let netScore = 0.4 * packageObj.responsiveMaintainer + 0.3 * packageObj.rampUp + 0.15 * packageObj.correctness + 0.1 * packageObj.busFactor; //+ 0.05 * packageObj.hasLicense;
+    return netScore;
+}
+
 // Useful for looking at which data you can access:
 // https://docs.github.com/en/rest/overview/endpoints-available-for-github-app-installation-access-tokens?apiVersion=2022-11-28
 async function getPackageObject(owner: string, packageName: string, token: string, packageObj: Package) {
@@ -264,6 +427,11 @@ async function getPackageObject(owner: string, packageName: string, token: strin
         logger.error(`Failed to retrieve readme length for ${owner}/${packageName}`);
     }
 
+    const correctness = await calculateCorrectness(owner, packageName, token);
+    packageObj.setCorrectness(correctness);
+
+    const responsiveMaintainer = await calculateResponsiveMaintainer(owner, packageName, token);
+    packageObj.setResponsiveMaintainer(responsiveMaintainer);
     return packageObj;
 }
 
@@ -304,6 +472,7 @@ async function cloneRepository(repoUrl: string, packageObj: Package) {
     
     packageObj.setBusFactor(calculateBusFactor(packageObj.readmeLength, packageObj.contributors));
     packageObj.setRampUp(calculateRampUp(packageObj.readmeLength));
+    packageObj.setNetScore(calculateNetScore(packageObj));
     return packageObj;
 }
   
