@@ -562,9 +562,16 @@ const exampleUrl = new Url("https://github.com/vishnumaiea/ptScheduler", "ptSche
 
 let packageObj = new Package();
 
+let urlsFile = "./run_URL_FILE/urls.txt";
+
+fetchUrlsFromFile(urlsFile).then((urls) => {
+    console.log(urls);
+});
+
 calculateAllMetrics(packageObj, exampleUrl).then ((packageObj) => {
     packageObj.printMetrics();
 });
+
 
 module.exports = {
     retrieveGithubKey,
