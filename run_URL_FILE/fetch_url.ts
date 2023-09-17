@@ -39,6 +39,8 @@ export class Package {
     rampUp: number = -1;
     hasLicense: boolean = false;
     busFactor: number = -1;
+    correctness: number = -1;
+    responsiveMaintainer: number = -1;
     netScore: number = -1;
 
     setContributors(contributors: Map<string, number>) {
@@ -65,16 +67,33 @@ export class Package {
         this.url = url
     }
 
+    setCorrectness(correctness: number) {
+        this.correctness = correctness;
+    }
+
+    setResponsiveMaintainer(responsiveMaintainer: number) {
+        this.responsiveMaintainer = responsiveMaintainer;
+    }
+
+    setNetScore(netScore: number) {
+        this.netScore = netScore;
+    }
+
     printMetrics() {
         const output = {
             URL : this.url,                             
-            NET_SCORE: this.netScore,                   // This metric has a field, but is not implemented
-            RAMP_UP_SCORE: this.rampUp,                 // This metric has a field, but is not implemented 
-            CORRECTNESS_SCORE: -1,                      // This metric doesn't seem have a field in this class yet
-            BUS_FACTOR_SCORE: this.busFactor,           // Implemented!
-            RESPONSIVE_MAINTAINER_SCORE: -1,            // This metric doesn't seem have a field in this class yet
-            LICENSE_SCORE: Number(this.hasLicense)      // Implemented!
+            NET_SCORE: this.netScore,                                    // Implemented!
+            RAMP_UP_SCORE: this.rampUp,                                  // Implemented! 
+            CORRECTNESS_SCORE: this.correctness,                         // Implemented!
+            BUS_FACTOR_SCORE: this.busFactor,                            // Implemented!
+            RESPONSIVE_MAINTAINER_SCORE: this.responsiveMaintainer,      // Implemented!
+            LICENSE_SCORE: Number(this.hasLicense)                       // Implemented!
         }
+        logger.info(`README Length: ${this.readmeLength}`);
+        logger.info('Contributors:');
+        this.contributors.forEach((contributions, contributor) => {
+            logger.info(`  ${contributor}: ${contributions}`);
+        });
 
         const stringify = ndjson.stringify();
         stringify.write(output);
@@ -83,6 +102,14 @@ export class Package {
         stringify.on('data', (line: string) => {
           process.stdout.write(line);
         });
+
+        logger.info(`URL: ${this.url}`);
+        logger.info(`NET_SCORE: ${this.netScore}`);
+        logger.info(`RAMP_UP_SCORE: ${this.rampUp}`);
+        logger.info(`CORRECTNESS_SCORE: ${this.correctness}`);
+        logger.info(`BUS_FACTOR_SCORE: ${this.busFactor}`);
+        logger.info(`RESPONSIVE_MAINTAINER_SCORE: ${this.responsiveMaintainer}`);
+        logger.info(`LICENSE_SCORE: ${Number(this.hasLicense)}`);
     }
   }
 
@@ -130,8 +157,8 @@ function calculateRampUp(readmeLength: number) {
     // 0 is very long or very short
     let readmeDifference = Math.abs(targetReadmeLength -  readmeLength);
     let readmeVal = 100 - (readmeDifference / longestReadmeLength) * 100;
-
     rampUpVal = readmeVal;
+    rampUpVal /= 100;
 
     // Rounds to rf decimal places without padding with 0s (rf defined globally)
     rampUpVal = Math.round(rampUpVal * (10 ** rf)) / (10 ** rf);
@@ -188,12 +215,159 @@ function calculateBusFactor(readmeLength: number, contributors: Map<string, numb
     contributorsVal = (contributorsNum/20 * 100) / 3 + 2 * contributorsVal / 3;
 
     // Bus factor is average of readmeVal and contributorVal
-    busFactorVal = (readmeVal + contributorsVal) / 2;
-
+    busFactorVal = ((readmeVal + contributorsVal) / 2)/100;
     // Rounds to rf decimal places without padding with 0s (rf defined globally)
     busFactorVal = Math.round(busFactorVal * (10 ** rf)) / (10 ** rf);
-
     return busFactorVal
+}
+
+async function getUserStars(owner: string, packageName: string, token: string) {
+    const headers = {
+        Authorization: `Bearer ${token}`,
+    };
+
+    try {
+        const response = await axios.get(`https://api.github.com/repos/${owner}/${packageName}`, { headers });
+        const stars = response.data.stargazers_count || 0; 
+        return stars;
+    } catch (error) {
+        logger.error(`Error fetching star count: ${error}`);
+        return 0; 
+    }
+}
+
+async function getOpenIssuesCount(owner: string, packageName: string, token: string) {
+    const headers = {
+        Authorization: `Bearer ${token}`,
+    };
+    try {
+        const response = await axios.get(`https://api.github.com/repos/${owner}/${packageName}/issues?state=open`, { headers });
+        const openIssuesCount = response.data.length || 0; 
+        return openIssuesCount;
+    } catch (error) {
+        logger.error(`Error fetching open issues count: ${error}`);
+        return 0; 
+    }
+}
+
+async function calculateCorrectness(owner: string, packageName: string, token: string) {
+    try {
+        const stars = await getUserStars(owner, packageName, token);
+        const openIssues = await getOpenIssuesCount(owner, packageName, token);
+
+        const starsWeight = 0.4;
+        const issuesWeight = 0.6;
+        const correctnessScore = (stars * starsWeight / 100) + (0.6 - (0.6 * openIssues * issuesWeight / 100));
+
+        return Math.round(correctnessScore * (10 ** rf)) / (10 ** rf);
+
+    } catch (error) {
+        logger.error(`Error calculating correctness metric: ${error}`);
+        return -1; 
+    }
+}
+
+async function getCommitFrequency(owner: string, packageName: string, token: string) {
+    const headers = {
+        Authorization: `Bearer ${token}`,
+    };
+    try {
+        const response = await axios.get(`https://api.github.com/repos/${owner}/${packageName}/commits`, { headers });
+
+        const commitData = response.data;
+        if (commitData.length < 2) {
+            //not enough commits for frequency calculation
+            return 0;
+        }
+
+        //sort commitData by commit timestamp in ascending order
+        commitData.sort((a: any, b: any) => {
+            const timestampA = new Date(a.commit.author.date).getTime();
+            const timestampB = new Date(b.commit.author.date).getTime();
+            return timestampA - timestampB;
+        });
+
+        //calculate the average time between commits in milliseconds
+        let totalTimeInterval = 0;
+        for (let i = 1; i < commitData.length; i++) {
+            const commitDate = new Date(commitData[i].commit.author.date);
+            const prevCommitDate = new Date(commitData[i - 1].commit.author.date);
+            const timeInterval = commitDate.getTime() - prevCommitDate.getTime();
+            totalTimeInterval += timeInterval;
+        }
+
+        const averageTimeInterval = totalTimeInterval / (commitData.length - 1);
+        const frequency = ((1000 * 60 * 60 * 24 * 365) - averageTimeInterval) / (1000 * 60 * 60 * 24 * 365);
+
+        return frequency;
+    } catch (error) {
+        logger.error(`Error fetching commit frequency: ${error}`);
+        return 0; 
+    }
+}
+
+async function getIssueResolutionTime(owner: string, packageName: string, token: string) {
+    const headers = {
+        Authorization: `Bearer ${token}`,
+    };
+
+    try {
+        const response = await axios.get(`https://api.github.com/repos/${owner}/${packageName}/issues?state=closed`, { headers });
+
+        const issueData = response.data;
+        if (issueData.length === 0) {
+            return 0;
+        }
+
+        //calculate the average time between issue creation and resolution in milliseconds
+        let totalTimeInterval = 0;
+        let resolvedIssueCount = 0;
+        for (const issue of issueData) {
+            if (issue.state === 'closed' && issue.created_at && issue.closed_at) {
+                const createDate = new Date(issue.created_at);
+                const resolveDate = new Date(issue.closed_at);
+                const timeInterval = resolveDate.getTime() - createDate.getTime();
+                totalTimeInterval += timeInterval;
+                resolvedIssueCount++;
+            }
+        }
+        logger.info(`issues: ${resolvedIssueCount}`);
+        if (resolvedIssueCount === 0) {
+            return 0;
+        }
+
+        const averageTimeInterval = totalTimeInterval / resolvedIssueCount;
+        const frequency = ((1000 * 60 * 60 * 24 * 365) - averageTimeInterval) / (1000 * 60 * 60 * 24 * 365);
+
+        return frequency;
+    } catch (error) {
+        logger.error(`Error fetching issue resolution time: ${error}`);
+        return 0;
+    }
+}
+
+async function calculateResponsiveMaintainer(owner: string, packageName: string, token: string) {
+    try {
+        const commitFrequency = await getCommitFrequency(owner, packageName, token);
+        const issueResolutionTime = await getIssueResolutionTime(owner, packageName, token);
+        //logger.info(`commit freq: ${commitFrequency}`);
+        //logger.info(`issue resol: ${issueResolutionTime}`);
+
+        const commitFrequencyWeight = 0.3;
+        const issueResolutionWeight = 0.7;
+        const responsiveMaintainerScore = commitFrequency * commitFrequencyWeight + issueResolutionTime * issueResolutionWeight;
+
+        return Math.round(responsiveMaintainerScore * (10 ** rf)) / (10 ** rf);
+    } catch (error) {
+        logger.error(`Error calculating responsive maintainer score: ${error}`);
+        return -1; 
+    }
+}
+
+function calculateNetScore(packageObj: Package) {
+    let netScore = 0.4 * packageObj.responsiveMaintainer + 0.3 * packageObj.rampUp + 0.15 * packageObj.correctness + 0.1 * packageObj.busFactor; //+ 0.05 * packageObj.hasLicense;
+    let roundedNetScore = Math.round(netScore * (10 ** rf)) / (10 ** rf);
+    return roundedNetScore;
 }
 
 // Useful for looking at which data you can access:
@@ -202,32 +376,43 @@ async function getPackageObject(owner: string, packageName: string, token: strin
     const headers = {
         Authorization: `Bearer ${token}`,
     };
+    
+    await axios.get(`https://api.github.com/repos/${owner}/${packageName}/contributors`, { headers })
+    .then((response) => {
+        const contributorsData = response.data;
+        const contributorsMap = new Map<string, number>();
 
-    /*(await axios.get(`https://api.github.com/repos/${owner}/${packageName}/contributors`,{headers,})
-        .then((response) => {
-            const contributors = response.data.map((contributor: any) => contributor.login);
-        })
-        .catch ((err) => {
-            logger.error(`Error: ${err}`);
-            packageObj.setContributors([]);
+        contributorsData.forEach((contributor: any) => {
+            const username = contributor.login;
+            const contributions = contributor.contributions; 
+            contributorsMap.set(username, contributions);
         });
 
-    /*await axios.get(`https://api.github.com/repos/${owner}/${packageName}/readme`,{headers,})
+        packageObj.setContributors(contributorsMap);
+    })
+    .catch((err) => {
+        logger.error(`Error: ${err}`);
+        packageObj.setContributors(new Map()); 
+    });
+
+    await axios.get(`https://api.github.com/repos/${owner}/${packageName}/readme`,{headers,})
         .then((response) => {
             const readmeContent = Buffer.from(response.data.content, 'base64').toString('utf-8');
             packageObj.setReadmeLength(readmeContent.length);
         })
         .catch ((err) => {
             logger.error(`Error: ${err}`);
-            packageObj.setReadmeLength(0);
-        });*/
+            packageObj.setReadmeLength(-1);
+        });
 
     await axios.get(`https://api.github.com/repos/${owner}/${packageName}/license`,{headers,})
         .then((response) => {
-            packageObj.setHasLicense(true);
+            if (response.status == 200) {
+                packageObj.setHasLicense(true);
+            }
         })
         .catch ((err) => {
-            //console.error('Error:', err);
+            //logger.error(`Failed to get license status: ${err}`);
             packageObj.setHasLicense(false);
         });
 
@@ -237,25 +422,24 @@ async function getPackageObject(owner: string, packageName: string, token: strin
         logger.error(`Failed to retrieve contributors for ${owner}/${packageName}`);
     }
 
-    if (packageObj.readmeLength) {
+    if (packageObj.readmeLength != -1) {
         logger.info(`Readme length retrieved for ${owner}/${packageName}`);
     } else {
         logger.error(`Failed to retrieve readme length for ${owner}/${packageName}`);
     }
 
-    if (packageObj.contributors && packageObj.readmeLength) {
-        logger.info(`Package {
-            contributors: [
-                ${packageObj.contributors ? Array.from(packageObj.contributors).map(([contributor, value]) => `${contributor}: ${value}`).join(',\n                ') : ''}
-            ],
-            readmeLength: ${packageObj.readmeLength}
-        }`);
-    }
+    await calculateCorrectness(owner, packageName, token).then((correctness) => {
+        packageObj.setCorrectness(correctness);
+    });
+
+    const responsiveMaintainer = await calculateResponsiveMaintainer(owner, packageName, token);
+    packageObj.setResponsiveMaintainer(responsiveMaintainer);
     return packageObj;
 }
 
 async function cloneRepository(repoUrl: string, packageObj: Package) {
     packageObj.setURL(repoUrl);
+    const localDir = './fetch_url_cloned_repos';
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), localDir));
     logger.info(`made directory: ${dir}`);
     fs.readdirSync(dir);
@@ -273,8 +457,8 @@ async function cloneRepository(repoUrl: string, packageObj: Package) {
     let repoAuthors = new Map();
     await git.log({fs, dir}) 
     .then((commits) => {
-    logger.info(`Git log retrieved for ${repoUrl}`);
-    commits.forEach((commit, index) => {
+        logger.info(`Git log retrieved for ${repoUrl}`);
+    /*commits.forEach((commit, index) => {
         logger.info(`Commit ${index + 1}:`);
         logger.info(`OID: ${commit.oid}`);
         logger.info(`Message: ${commit.commit.message}`);
@@ -283,56 +467,40 @@ async function cloneRepository(repoUrl: string, packageObj: Package) {
         logger.info(`Author: ${commit.commit.author.name} <${commit.commit.author.email}>`);
         logger.info(`Committer: ${commit.commit.committer.name} <${commit.commit.committer.email}>`);
         logger.info(`GPG Signature: ${commit.commit.gpgsig}`);
-    });
+    });*/
     })
     .catch((error) => {
         logger.error(`Failed to retrieve git log for ${repoUrl}: ${error.message}`);
     });
-
-    /*.then((response) => {
-        // Get commit authors
-        response.forEach(function (val) {
-            let authorEmail = `${val.commit.author.email}`;
-            if(!authorEmail.includes('github')) {
-                if(repoAuthors.get(authorEmail) !== undefined) {
-                    repoAuthors.set(authorEmail, repoAuthors.get(authorEmail) + 1);
-                } else {
-                    repoAuthors.set(authorEmail, 1);
-                }
-            }
-        }); 
-    })*/
-
-    packageObj.setContributors(repoAuthors);
-    console.log(repoAuthors);
-
-    // Get readme length
-    await readReadmeFile(dir).then ((response) => {
-        packageObj.setReadmeLength(response.length);
-    });
     
     packageObj.setBusFactor(calculateBusFactor(packageObj.readmeLength, packageObj.contributors));
+    packageObj.setRampUp(calculateRampUp(packageObj.readmeLength));
+    packageObj.setNetScore(calculateNetScore(packageObj));
+    return packageObj;
+}
+
+async function calculateAllMetrics(packageObj: Package, exampleUrl: Url) {
+    await getPackageObject(exampleUrl.getPackageOwner(), exampleUrl.packageName, githubToken, packageObj)
+        .then((returnedPackageObject) => {
+            packageObj = returnedPackageObject;
+        })
+
+    await cloneRepository(exampleUrl.url, packageObj).then ((response) => {
+        packageObj = response;
+    });
+
     return packageObj;
 }
   
 // Usage example
 const githubToken = retrieveGithubKey();
 //const exampleUrl = new Url("https://github.com/cloudinary/cloudinary_npm", "cloudinary_npm", "cloudinary");
-const exampleUrl = new Url("https://github.com/mghera02/461Group2", "461Group2", "mghera02");
-//const exampleUrl = new Url("https://github.com/vishnumaiea/ptScheduler", "ptScheduler", "vishnumaiea");
+//const exampleUrl = new Url("https://github.com/mghera02/461Group2", "461Group2", "mghera02");
+const exampleUrl = new Url("https://github.com/vishnumaiea/ptScheduler", "ptScheduler", "vishnumaiea");
 
 let packageObj = new Package();
 
-getPackageObject(exampleUrl.getPackageOwner(), exampleUrl.packageName, githubToken, packageObj)
-    .then((returnedPackageObject) => {
-        packageObj = returnedPackageObject;
-        //console.log(packageObj);
-    })
-
-const localDir = './fetch_url_cloned_repos';
-cloneRepository(exampleUrl.url, packageObj).then ((response) => {
-    packageObj = response;
-    //console.log(packageObj);
+calculateAllMetrics(packageObj, exampleUrl).then ((packageObj) => {
     packageObj.printMetrics();
 });
 
