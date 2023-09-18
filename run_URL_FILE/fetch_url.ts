@@ -13,6 +13,7 @@ import * as git from 'isomorphic-git'; // For cloning repos locally and getting 
 import fs from 'fs'; // Node.js file system module for cloning repos  
 import os from 'os'
 import path from 'path'
+import { print } from 'graphql';
 const http = require("isomorphic-git/http/node");
 
 dotenv.config();
@@ -129,6 +130,10 @@ export class Package {
             return this.packageOwner;
         }
         return "";
+    }
+
+    getPackageName() {
+        return this.packageName;
     }
   }
 
@@ -412,7 +417,7 @@ async function getPackageObject(owner: string, packageName: string, token: strin
             }
         })
         .catch ((err) => {
-            //logger.error(`Failed to get license status: ${err}`);
+            logger.error(`Failed to get license status: ${err}`);
             packageObj.setHasLicense(false);
         });
 
@@ -564,28 +569,59 @@ async function getGithubDetailsFromNpm(npmUrl: string) {
   }
 }
 
+async function urlToPackage(url: Url, packageObj: Package) {
+    const owner = url.getPackageOwner();
+    const name = url.getPackageName();
+
+    packageObj = await getPackageObject(owner, name,  githubToken, packageObj)
+    packageObj.setURL(url.url);
+
+    return packageObj;
+}
+
+async function urlsToPackages(urls: Url[]) {
+    var packages: Package[] = [];
+
+    for (const url of urls) {
+        var packageObj = new Package();
+        packageObj = await urlToPackage(url, packageObj);
+        packages.push(packageObj);
+    }
+
+    return packages;
+}
+
+function printAllMetrics(packages: Package[]) {
+    for (const packageObj of packages) {
+        packageObj.printMetrics();
+    }
+}
+
 
   
   
   
 // Usage example
-const githubToken = retrieveGithubKey();
-//const exampleUrl = new Url("https://github.com/cloudinary/cloudinary_npm", "cloudinary_npm", "cloudinary");
-//const exampleUrl = new Url("https://github.com/mghera02/461Group2", "461Group2", "mghera02");
-const exampleUrl = new Url("https://github.com/vishnumaiea/ptScheduler", "ptScheduler", "vishnumaiea");
-
-let packageObj = new Package();
+const  githubToken = retrieveGithubKey();
+// const exampleUrl = new Url("https://github.com/cloudinary/cloudinary_npm", "cloudinary_npm", "cloudinary");
+// const exampleUrl = new Url("https://github.com/mghera02/461Group2", "461Group2", "mghera02");
+// const exampleUrl = new Url("https://github.com/vishnumaiea/ptScheduler", "ptScheduler", "vishnumaiea");
 
 let urlsFile = "./run_URL_FILE/urls.txt";
 
+// fetchUrlsFromFile(urlsFile).then((urls) => {
+//     console.log(urls);
+// });
+
+// calculateAllMetrics(packageObj, exampleUrl).then ((packageObj) => {
+//     packageObj.printMetrics();
+// });
+
 fetchUrlsFromFile(urlsFile).then((urls) => {
-    console.log(urls);
+    urlsToPackages(urls).then((packages) => {
+        printAllMetrics(packages)
+    });
 });
-
-calculateAllMetrics(packageObj, exampleUrl).then ((packageObj) => {
-    packageObj.printMetrics();
-});
-
 
 module.exports = {
     retrieveGithubKey,
