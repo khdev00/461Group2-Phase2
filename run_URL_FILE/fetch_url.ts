@@ -15,6 +15,8 @@ import os from 'os'
 import path from 'path'
 const http = require("isomorphic-git/http/node");
 
+import { execSync } from 'child_process';
+
 dotenv.config();
 
 // This is what controlls the rounding for the metrics,
@@ -156,7 +158,7 @@ function calculateRampUp(readmeLength: number) {
     // 100 is perfect length
     // 0 is very long or very short
     let readmeDifference = Math.abs(targetReadmeLength -  readmeLength);
-    let readmeVal = 100 - (readmeDifference / longestReadmeLength) * 100;
+    let readmeVal = 100 - Math.min(1, readmeDifference / longestReadmeLength) * 100;
     rampUpVal = readmeVal;
     rampUpVal /= 100;
 
@@ -259,7 +261,7 @@ async function calculateCorrectness(owner: string, packageName: string, token: s
         const issuesWeight = 0.6;
         const correctnessScore = (stars * starsWeight / 100) + (0.6 - (0.6 * openIssues * issuesWeight / 100));
 
-        return Math.round(correctnessScore * (10 ** rf)) / (10 ** rf);
+        return Math.round(correctnessScore / 1000 * (10 ** rf)) / (10 ** rf);
 
     } catch (error) {
         logger.error(`Error calculating correctness metric: ${error}`);
@@ -437,8 +439,26 @@ async function getPackageObject(owner: string, packageName: string, token: strin
     return packageObj;
 }
 
+async function removeDirectory(dirPath: string) {
+    if (fs.existsSync(dirPath)) {
+      const files = fs.readdirSync(dirPath);
+  
+      for (const file of files) {
+        const filePath = `${dirPath}/${file}`;
+  
+        if (fs.lstatSync(filePath).isDirectory()) {
+          await removeDirectory(filePath);
+        } else {
+          fs.unlinkSync(filePath);
+        }
+      }
+  
+      fs.rmdirSync(dirPath);
+    }
+}
+
 async function cloneRepository(repoUrl: string, packageObj: Package) {
-    packageObj.setURL(repoUrl);
+    /*packageObj.setURL(repoUrl);
     const localDir = './fetch_url_cloned_repos';
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), localDir));
     logger.info(`made directory: ${dir}`);
@@ -454,42 +474,37 @@ async function cloneRepository(repoUrl: string, packageObj: Package) {
     });
 
     fs.readdirSync(dir);
-    let repoAuthors = new Map();
-    await git.log({fs, dir}) 
-    .then((commits) => {
-        logger.info(`Git log retrieved for ${repoUrl}`);
-    /*commits.forEach((commit, index) => {
-        logger.info(`Commit ${index + 1}:`);
-        logger.info(`OID: ${commit.oid}`);
-        logger.info(`Message: ${commit.commit.message}`);
-        logger.info(`Parent: ${commit.commit.parent.join(', ')}`);
-        logger.info(`Tree: ${commit.commit.tree}`);
-        logger.info(`Author: ${commit.commit.author.name} <${commit.commit.author.email}>`);
-        logger.info(`Committer: ${commit.commit.committer.name} <${commit.commit.committer.email}>`);
-        logger.info(`GPG Signature: ${commit.commit.gpgsig}`);
-    });*/
-    })
-    .catch((error) => {
-        logger.error(`Failed to retrieve git log for ${repoUrl}: ${error.message}`);
-    });
+    let repoAuthors = new Map();*/
     
     packageObj.setBusFactor(calculateBusFactor(packageObj.readmeLength, packageObj.contributors));
     packageObj.setRampUp(calculateRampUp(packageObj.readmeLength));
     packageObj.setNetScore(calculateNetScore(packageObj));
+
+    //await removeDirectory(dir);
     return packageObj;
 }
 
-async function calculateAllMetrics(packageObj: Package, exampleUrl: Url) {
-    await getPackageObject(exampleUrl.getPackageOwner(), exampleUrl.packageName, githubToken, packageObj)
-        .then((returnedPackageObject) => {
+async function calculateAllMetrics(urlObjs: Url[]) {
+
+    const packageObjs: Package[] = [];
+
+    for await(let url of urlObjs) {
+        let packageObj = new Package;
+        await getPackageObject(url.getPackageOwner(), url.packageName, githubToken, packageObj)
+            .then((returnedPackageObject) => {
+                packageObj = returnedPackageObject;
+            })
+
+        let repoUrl = `https://github.com/${url.getPackageOwner()}/${url.packageName}`;
+        await cloneRepository(repoUrl, packageObj).then ((returnedPackageObject) => {
             packageObj = returnedPackageObject;
-        })
+        });
 
-    await cloneRepository(exampleUrl.url, packageObj).then ((response) => {
-        packageObj = response;
-    });
+        //console.log(packageObj);
+        packageObjs.push(packageObj);
+    }
 
-    return packageObj;
+    return packageObjs;
 }
 
 // Asynchronous function to fetch URLs from a given file path.
@@ -530,7 +545,7 @@ async function fetchUrlsFromFile(filePath: string) {
           urls.push(urlObj);
         } 
         else {
-          console.log(`Invalid URL format: ${line}`);
+          //console.log(`Invalid URL format: ${line}`);
         }
       }
       return urls;
@@ -570,20 +585,19 @@ async function getGithubDetailsFromNpm(npmUrl: string) {
   
 // Usage example
 const githubToken = retrieveGithubKey();
-//const exampleUrl = new Url("https://github.com/cloudinary/cloudinary_npm", "cloudinary_npm", "cloudinary");
-//const exampleUrl = new Url("https://github.com/mghera02/461Group2", "461Group2", "mghera02");
-const exampleUrl = new Url("https://github.com/vishnumaiea/ptScheduler", "ptScheduler", "vishnumaiea");
-
-let packageObj = new Package();
 
 let urlsFile = "./run_URL_FILE/urls.txt";
+let urlObjs : Url[] = [];
 
 fetchUrlsFromFile(urlsFile).then((urls) => {
-    console.log(urls);
-});
-
-calculateAllMetrics(packageObj, exampleUrl).then ((packageObj) => {
-    packageObj.printMetrics();
+    //console.log(urls);
+    urlObjs = urls
+    calculateAllMetrics(urlObjs).then ((packageObjs) => {
+        packageObjs.forEach((packageObj) => {
+            packageObj.printMetrics();
+        });
+        //console.log(packageObjs);
+    });
 });
 
 
