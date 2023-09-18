@@ -5,7 +5,8 @@
 
 import dotenv from 'dotenv'; // For retrieving env variables
 import axios from 'axios'; // Library to conveniantly send HTTP requests to interact with REST API
-import winston from 'winston'; //Logging library
+import winston, { Logform } from 'winston'; //Logging library
+import { getLogger } from './logger';
 
 //import * as ndjson from 'ndjson';
 import ndjson from 'ndjson';
@@ -21,17 +22,10 @@ dotenv.config();
 // This is what controlls the rounding for the metrics,
 // In class we were told to round to 5dp without padding with zeros
 // If that number changes, change this value. 
-const rf: number = 5; 
+const rf: number = 5;
 
 //Logger initialization
-const logger = winston.createLogger({
-    level: 'info',
-    format: winston.format.simple(),
-    transports: [
-      new winston.transports.File({ filename: 'error.log', level: 'error' }),
-      new winston.transports.File({ filename: 'info.log', level: 'info' }),
-    ],
-  });
+const logger = getLogger();
 
 export class Package {
     url: string = "";
@@ -90,10 +84,10 @@ export class Package {
             RESPONSIVE_MAINTAINER_SCORE: this.responsiveMaintainer,      // Implemented!
             LICENSE_SCORE: Number(this.hasLicense)                       // Implemented!
         }
-        logger.info(`README Length: ${this.readmeLength}`);
-        logger.info('Contributors:');
+        logger.debug(`README Length: ${this.readmeLength}`);
+        logger.debug('Contributors:');
         this.contributors.forEach((contributions, contributor) => {
-            logger.info(`  ${contributor}: ${contributions}`);
+            logger.debug(`  ${contributor}: ${contributions}`);
         });
 
         const stringify = ndjson.stringify();
@@ -104,13 +98,13 @@ export class Package {
           process.stdout.write(line);
         });
 
-        logger.info(`URL: ${this.url}`);
+        logger.debug(`URL: ${this.url}`);
         logger.info(`NET_SCORE: ${this.netScore}`);
         logger.info(`RAMP_UP_SCORE: ${this.rampUp}`);
-        logger.info(`CORRECTNESS_SCORE: ${this.correctness}`);
-        logger.info(`BUS_FACTOR_SCORE: ${this.busFactor}`);
-        logger.info(`RESPONSIVE_MAINTAINER_SCORE: ${this.responsiveMaintainer}`);
-        logger.info(`LICENSE_SCORE: ${Number(this.hasLicense)}`);
+        logger.debug(`CORRECTNESS_SCORE: ${this.correctness}`);
+        logger.debug(`BUS_FACTOR_SCORE: ${this.busFactor}`);
+        logger.debug(`RESPONSIVE_MAINTAINER_SCORE: ${this.responsiveMaintainer}`);
+        logger.debug(`LICENSE_SCORE: ${Number(this.hasLicense)}`);
     }
   }
 
