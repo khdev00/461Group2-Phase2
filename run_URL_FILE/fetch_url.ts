@@ -495,62 +495,76 @@ async function calculateAllMetrics(packageObj: Package, exampleUrl: Url) {
 // Asynchronous function to fetch URLs from a given file path.
 async function fetchUrlsFromFile(filePath: string) {
     try {
-      // Reading the content of the file asynchronously. 'utf-8' specifies the character encoding of the file.
       const data = await fs.promises.readFile(filePath, 'utf-8');
   
-      // Splitting the file content by newline character to get individual lines as an array.
       const lines = data.split('\n');
   
-      // Initializing an empty array to hold valid URL objects.
       const urls: Url[] = [];
   
-      // Iterating over each line obtained from the file.
       for (let line of lines) {
-        // Removing whitespace from the beginning and the end of the line.
         line = line.trim();
   
-        // Checking if the line starts with 'http' and contains either 'npmjs.com' or 'github.com'.
         if (line.startsWith('http') && (line.includes('npmjs.com') || line.includes('github.com'))) {
-          // Initializing variables to hold package name and owner (if applicable).
           let packageName = '';
           let packageOwner: string | null = '';   
           
-          // Checking if the URL is from npm.
           if (line.includes('npmjs.com')) {
-            // Extracting the package name from the npm URL. We are assuming the package name is the last segment of the URL.
             const parts = line.split('/');
             packageName = parts[parts.length - 1];
             packageOwner = null;
+
+            // Try to get GitHub details from npm package URL.
+            const githubDetails = await getGithubDetailsFromNpm(line);
+            if(githubDetails) {
+              packageOwner = githubDetails.owner;
+              packageName = githubDetails.name;
+            }
           } 
-          // Checking if the URL is from GitHub.
           else if (line.includes('github.com')) {
-            // Extracting the repository name and owner from the GitHub URL.
             const parts = line.split('/');
             packageName = parts[parts.length - 1];
             packageOwner = parts[parts.length - 2];
           }
   
-          // Creating a new Url object with the extracted information and adding it to the urls array.
           const urlObj = new Url(line, packageName, packageOwner);
           urls.push(urlObj);
         } 
-        // If the line does not conform to the expected URL format, it is logged as an invalid URL format.
         else {
           console.log(`Invalid URL format: ${line}`);
         }
       }
-  
-      // Returning the array of Url objects.
       return urls;
     } 
-    // Catching any errors that occur during file reading and logging them.
     catch (error) {
       console.error('Error reading file:', error);
-  
-      // Returning an empty array in case of an error.
       return [];
     }
+}
+
+async function getGithubDetailsFromNpm(npmUrl: string) {
+  try {
+    // Fetch package data from npm registry API.
+    const packageName = npmUrl.split('/').pop();
+    const res = await axios.get(`https://registry.npmjs.org/${packageName}`);
+    
+    // Try to find GitHub repository URL from npm package data.
+    const repositoryUrl = res.data.repository && res.data.repository.url;
+    
+    if (repositoryUrl && repositoryUrl.includes('github.com')) {
+      // Extract and return repository owner and name from GitHub URL.
+      const parts = repositoryUrl.split('/');
+      const name = parts[parts.length - 1].replace('.git', '');
+      const owner = parts[parts.length - 2];
+      return { name, owner };
+    }
+  } 
+  catch (error) {
+    console.error('Error fetching npm package data:', error);
+    return null;
   }
+}
+
+
   
   
   
