@@ -1,37 +1,31 @@
 #!/bin/bash
 
+# File path for dependencies
+dep_file_path="deps.txt";
+
+install_dependencies() {
+  # Installs all dependencies listed in the file at $file_path
+  npm install &> /dev/null || { echo "Failed to install dependencies"; exit 1; }
+  local file_path="$1"
+  local num_installed=1
+
+  # Check if the file exists
+  if [ ! -f "$file_path" ]; then
+    echo "Dependency file not found: $file_path, ensure that it exists."
+    exit 1;
+  fi
+
+  while IFS= read -r line || [[ -n "$line" ]]; do 
+    npm install $line &> /dev/null || { echo "Failed to install $line"; exit 1; }
+    ((num_installed++))
+  done < "$file_path"
+
+  echo "$num_installed dependencies installed..."
+}
+
 if [ "$1" == "install" ]; then
   # Install Node.js dependencies
-  npm install || { echo "Failed to install dependencies"; exit 1; }
-
-  # Install specific packages with npm
-  npm install typescript@4.7.4 || { echo "Failed to install TypeScript"; exit 1; }
-  npm install ts-node || { echo "Failed to install ts-node"; exit 1; }
-  npm install dotenv || { echo "Failed to install dotenv"; exit 1; }
-  npm install @types/node || { echo "Failed to install @types/node"; exit 1; }
-  npm install axios || { echo "Failed to install axios"; exit 1; }
-  npm install @types/jest || { echo "Failed to install @types/jest"; exit 1; }
-  npm install ts-jest || { echo "Failed to install ts-jest"; exit 1; }
-  npm install ndjson || { echo "Failed to install ndjson"; exit 1; }
-  npm install @types/ndjson || { echo "Failed to install ndjson"; exit 1; }
-  npm install bluebird || { echo "Failed to install ndjson"; exit 1; }
-  npm install tar || { echo "Failed to install ndjson"; exit 1; }
-  npm install util || { echo "Failed to install ndjson"; exit 1; }
-
-  # Setup Linting (assuming VSCode will handle this, no npm install required)
-
-  # Install GraphQL
-  npm install graphql || { echo "Failed to install GraphQL"; exit 1; }
-
-  # Install Winston for logging
-  npm install winston || { echo "Failed to install Winston"; exit 1; }
-
-  # Install Husky for Git hooks
-  npm install husky || { echo "Failed to install Husky"; exit 1; }
-
-  # Install Jest for testing
-  npm install jest || { echo "Failed to install Jest"; exit 1; }
-
+  install_dependencies "$dep_file_path"
   exit 0
 elif [ "$1" == "test" ]; then
   # Run Jest tests
@@ -40,7 +34,11 @@ elif [ "$1" == "test" ]; then
   echo "X/Y test cases passed. Z% line coverage achieved."
   exit 0
 else
-  #echo "Processing file $1..."
-  ts-node ./run_URL_FILE/fetch_url.ts "$1"
-  exit 0
+  if [ -f "$1" ]; then
+    ts-node ./run_URL_FILE/fetch_url.ts "$1";
+    exit 0;
+  else
+    echo "URL file $1 not found";
+    exit 1;
+  fi
 fi
