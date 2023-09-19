@@ -3,6 +3,27 @@
 # File path for dependencies
 dep_file_path="deps.txt";
 
+# Checks if the package exists
+check_if_exists() {
+  local name="$1";
+  npm show $name &> /dev/null || return 0;
+  return 1;
+}
+
+handle_install_error() {
+  local name="$1";
+  check_if_exists $name
+  local exists=$?
+
+  if [[ exists == 1 ]]; then
+    echo "Failed to install $name"; 
+  else
+    echo "It seems that the npm module: $name does not exist. Please fix that and try again";
+  fi
+  
+  exit 1;
+}
+
 install_dependencies() {
   # Installs all dependencies listed in the file at $file_path
   npm install &> /dev/null || { echo "Failed to install dependencies"; exit 1; }
@@ -16,12 +37,14 @@ install_dependencies() {
   fi
 
   while IFS= read -r line || [[ -n "$line" ]]; do 
-    npm install $line &> /dev/null || { echo "Failed to install $line"; exit 1; }
+    npm install $line &> /dev/null || handle_install_error $line
     ((num_installed++))
   done < "$file_path"
 
   echo "$num_installed dependencies installed..."
 }
+
+
 
 if [ "$1" == "install" ]; then
   # Install Node.js dependencies
