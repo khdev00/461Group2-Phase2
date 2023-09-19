@@ -14,6 +14,9 @@ if [ "$1" == "install" ]; then
   npm install ts-jest || { echo "Failed to install ts-jest"; exit 1; }
   npm install ndjson || { echo "Failed to install ndjson"; exit 1; }
   npm install @types/ndjson || { echo "Failed to install ndjson"; exit 1; }
+  npm install bluebird || { echo "Failed to install ndjson"; exit 1; }
+  npm install tar || { echo "Failed to install ndjson"; exit 1; }
+  npm install util || { echo "Failed to install ndjson"; exit 1; }
 
   # Setup Linting (assuming VSCode will handle this, no npm install required)
 

@@ -58,3 +58,8 @@ error: Failed to retrieve git log for https://github.com/nodejs/node: Could not 
 error: Failed to retrieve git log for https://github.com/nodejs/node: Could not find HEAD.
 error: Failed to retrieve git log for https://github.com/vuejs/vue: Could not find HEAD.
 error: Failed to retrieve git log for https://github.com/vuejs/vue: Could not find HEAD.
+error: Could not clone repository: error code HttpError: HTTP Error: 404 Not Found
+error: Could not clone repository: error code HttpError: HTTP Error: 404 Not Found
+error: Could not clone repository: error code HttpError: HTTP Error: 404 Not Found
+error: Could not clone repository: error code HttpError: HTTP Error: 404 Not Found
+error: Could not clone repository: error code HttpError: HTTP Error: 404 Not Found

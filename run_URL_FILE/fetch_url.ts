@@ -17,7 +17,14 @@ import path from 'path'
 import { print } from 'graphql';
 const http = require("isomorphic-git/http/node");
 
-import { execSync } from 'child_process';
+const BlueBirdPromise = require('bluebird')
+
+const tar = require('tar');
+import { promisify } from 'util';
+import { exec } from 'child_process';
+const execAsync = promisify(exec);
+
+const packageObjs: Package[] = [];
 
 import { 
     calculateRampUp, 
@@ -226,82 +233,106 @@ async function getPackageObject(owner: string, packageName: string, token: strin
     return packageObj;
 }
 
+async function readReadmeFile(repoUrl: string, cloneDir: string) {
+    try {
+        // Check if the README file exists in the cloned repository
+        const readmePath = path.join(cloneDir, 'README.md'); // Adjust the file name if it's not README.md
+
+        if (fs.existsSync(readmePath)) {
+            // Read the README file content
+            const readmeContent = fs.readFileSync(readmePath, 'utf-8');
+            //console.log(`README Content:\n${readmeContent}`);
+            return readmeContent;
+        } else {
+            //console.log('README file not found in the repository.');
+            return '';
+        }
+    } catch (error) {
+        //console.error('Error reading README file:', error);
+        return '';
+    }
+}
+
+async function extractTarball(tarballPath: string, targetDir: string): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+        fs.createReadStream(tarballPath)
+            .pipe(tar.extract({ cwd: targetDir, strip: 1 }))
+            .on('error', reject)
+            .on('end', resolve);
+    });
+}
+
 async function cloneRepository(repoUrl: string, packageObj: Package) {
     packageObj.setURL(repoUrl);
-    const localDir = './fetch_url_cloned_repos';
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), localDir));
-    logger.info(`made directory: ${dir}`);
-    fs.readdirSync(dir);
+    
+    try {
+        // Create a directory to clone the repository into
+        const cloneDir = path.join(__dirname, 'temp');
+        if (!fs.existsSync(cloneDir)) {
+            fs.mkdirSync(cloneDir);
+        }
+    
+        // Fetch the GitHub repository's tarball URL
+        const tarballUrl = `${repoUrl}/archive/master.tar.gz`;
+    
+        // Download the tarball to a temporary file
+        const tarballPath = path.join(__dirname, 'temp.tar.gz');
+        const response = await axios.get(tarballUrl, { responseType: 'stream' });
+        response.data.pipe(fs.createWriteStream(tarballPath));
+    
+        await new Promise((resolve, reject) => {
+            response.data.on('end', resolve);
+            response.data.on('error', reject);
+        });
+    
+        // Extract the tarball using the tar library
+        await extractTarball(tarballPath, cloneDir);
 
-    try {    
-        // await git.clone({
-        // http:http,
-        // fs,
-        // dir,
-        // url: repoUrl,
-        // singleBranch: true,
-        // depth: 200    
-        // });
+        // Read and display the README file
+        // Get readme length
+        await readReadmeFile(repoUrl, cloneDir).then ((response) => {
+            packageObj.setReadmeLength(String(response).length);
+        });
+    
+        // Clean up the temporary tarball file
+        fs.unlinkSync(tarballPath);
+    
+        //console.log(`Repository cloned to: ${cloneDir}`);
+
+    } catch (error) {
+        //console.error('Error cloning repository:', error);
     }
-    catch (error) {
-        logger.error(`Could not clone repository: error code ${error}`)
-        logger.info(`Could not clone repository: error code ${error}`)
-        return packageObj;
-    }
-
-    fs.readdirSync(dir);
-
-    let repoAuthors = new Map();
-    await git.log({fs, dir}) 
-    .then((commits) => {
-        /*logger.info(`Git log retrieved for ${repoUrl}`);
-    commits.forEach((commit, index) => {
-        logger.info(`Commit ${index + 1}:`);
-        logger.info(`OID: ${commit.oid}`);
-        logger.info(`Message: ${commit.commit.message}`);
-        logger.info(`Parent: ${commit.commit.parent.join(', ')}`);
-        logger.info(`Tree: ${commit.commit.tree}`);
-        logger.info(`Author: ${commit.commit.author.name} <${commit.commit.author.email}>`);
-        logger.info(`Committer: ${commit.commit.committer.name} <${commit.commit.committer.email}>`);
-        logger.info(`GPG Signature: ${commit.commit.gpgsig}`);*/
-    })
-    .catch((error) => {
-        logger.error(`Failed to retrieve git log for ${repoUrl}: ${error.message}`);
-        logger.info(`Failed to retrieve git log for ${repoUrl}: ${error.message}`);
-    });
     
     packageObj.setBusFactor(calculateBusFactor(packageObj.readmeLength, packageObj.contributors));
     packageObj.setRampUp(calculateRampUp(packageObj.readmeLength));
     packageObj.setNetScore(calculateNetScore(packageObj));
 
-    //await removeDirectory(dir);
     return packageObj;
 }
 
 async function calculateAllMetrics(urlObjs: Url[]) {
-    const packageObjs: Package[] = [];
-
     for await(let url of urlObjs) {
         let packageObj = new Package;
         await getPackageObject(url.getPackageOwner(), url.packageName, githubToken, packageObj)
             .then((returnedPackageObject) => {
                 packageObj = returnedPackageObject;
             })
-
-        let repoUrl = `https://github.com/${url.getPackageOwner()}/${url.packageName}`;
-        await cloneRepository(repoUrl, packageObj).then ((returnedPackageObject) => {
-            packageObj = returnedPackageObject;
-        });
-
-    await cloneRepository(url.url, packageObj).then ((response) => {
-        packageObj = response;
-    });
-
-        //console.log(packageObj);
         packageObjs.push(packageObj);
     }
 
-    return packageObjs;
+    let idx = 0;
+    return BlueBirdPromise.map(urlObjs, (url:Url) => {
+        let repoUrl = `https://github.com/${url.getPackageOwner()}/${url.packageName}`;
+        let packageObj = packageObjs[idx++];
+        console.log(repoUrl);
+        return new Promise(resolve => {
+          cloneRepository(repoUrl, packageObj)
+          .then((response) => {
+            console.log(response);
+            resolve(response);
+           });
+        });
+      }, {concurrency: 1});
 }
 
 // Asynchronous function to fetch URLs from a given file path.
@@ -396,7 +427,7 @@ let urlObjs : Url[] = [];
 
 fetchUrlsFromFile(urlsFile).then((urls) => {
     urlObjs = urls
-    calculateAllMetrics(urlObjs).then ((packageObjs) => {
+    calculateAllMetrics(urlObjs).then (() => {
         printAllMetrics(packageObjs);
     });
 });
