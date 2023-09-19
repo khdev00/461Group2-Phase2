@@ -408,7 +408,8 @@ const  githubToken = retrieveGithubKey();
 // const exampleUrl = new Url("https://github.com/mghera02/461Group2", "461Group2", "mghera02");
 // const exampleUrl = new Url("https://github.com/vishnumaiea/ptScheduler", "ptScheduler", "vishnumaiea");
 
-let urlsFile = "./run_URL_FILE/urls.txt";
+// let urlsFile = "./run_URL_FILE/urls.txt";
+let urlsFile = process.argv[2];
 let urlObjs : Url[] = [];
 
 fetchUrlsFromFile(urlsFile).then((urls) => {
