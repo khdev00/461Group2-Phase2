@@ -104,7 +104,7 @@ async function getOpenIssuesCount(owner: string, packageName: string, token: str
         return openIssuesCount;
     } catch (error) {
         logger.error(`Error fetching open issues count: ${error}`);
-        logger.info(`Error fetching open issues count: ${error}`);
+        logger.debug(`Error fetching open issues count: ${error}`);
         return 0; 
     }
 }

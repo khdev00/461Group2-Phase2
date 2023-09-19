@@ -40,7 +40,7 @@ else
   # Placeholder for URL_FILE processing command
   if [[ "$1" =~ ^/ ]]; then
     #echo "Processing file $1..."
-    ts-node ./run_URL_FILE/fetch_url.ts
+    ts-node ./run_URL_FILE/fetch_url.ts "$1"
     exit 0
   else
     echo "Invalid arguments"
