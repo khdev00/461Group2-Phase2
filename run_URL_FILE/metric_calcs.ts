@@ -118,7 +118,7 @@ export async function calculateCorrectness(owner: string, packageName: string, t
         const issuesWeight = 0.6;
         const correctnessScore = (stars * starsWeight / 100) + (0.6 - (0.6 * openIssues * issuesWeight / 100));
 
-        const correctness = Math.round(correctnessScore * (10 ** rf)) / (10 ** rf);
+        const correctness = Math.round(correctnessScore / 1000 * (10 ** rf)) / (10 ** rf);
         logger.debug(`Calculated correctness value of: ${correctness}`);
 
         return correctness

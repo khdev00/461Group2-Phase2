@@ -226,24 +226,6 @@ async function getPackageObject(owner: string, packageName: string, token: strin
     return packageObj;
 }
 
-async function removeDirectory(dirPath: string) {
-    if (fs.existsSync(dirPath)) {
-      const files = fs.readdirSync(dirPath);
-  
-      for (const file of files) {
-        const filePath = `${dirPath}/${file}`;
-  
-        if (fs.lstatSync(filePath).isDirectory()) {
-          await removeDirectory(filePath);
-        } else {
-          fs.unlinkSync(filePath);
-        }
-      }
-  
-      fs.rmdirSync(dirPath);
-    }
-}
-
 async function cloneRepository(repoUrl: string, packageObj: Package) {
     packageObj.setURL(repoUrl);
     const localDir = './fetch_url_cloned_repos';
