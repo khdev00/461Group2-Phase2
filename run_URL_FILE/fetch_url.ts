@@ -5,7 +5,8 @@
 
 import dotenv from 'dotenv'; // For retrieving env variables
 import axios from 'axios'; // Library to conveniantly send HTTP requests to interact with REST API
-import winston from 'winston'; //Logging library
+import winston, { Logform } from 'winston'; //Logging library
+import { getLogger } from './logger';
 
 //import * as ndjson from 'ndjson';
 import ndjson from 'ndjson';
@@ -13,6 +14,7 @@ import * as git from 'isomorphic-git'; // For cloning repos locally and getting 
 import fs from 'fs'; // Node.js file system module for cloning repos  
 import os from 'os'
 import path from 'path'
+import { print } from 'graphql';
 const http = require("isomorphic-git/http/node");
 
 import { execSync } from 'child_process';
@@ -22,17 +24,10 @@ dotenv.config();
 // This is what controlls the rounding for the metrics,
 // In class we were told to round to 5dp without padding with zeros
 // If that number changes, change this value. 
-const rf: number = 5; 
+const rf: number = 5;
 
 //Logger initialization
-const logger = winston.createLogger({
-    level: 'info',
-    format: winston.format.simple(),
-    transports: [
-      new winston.transports.File({ filename: 'error.log', level: 'error' }),
-      new winston.transports.File({ filename: 'info.log', level: 'info' }),
-    ],
-  });
+const logger = getLogger();
 
 export class Package {
     url: string = "";
@@ -91,10 +86,10 @@ export class Package {
             RESPONSIVE_MAINTAINER_SCORE: this.responsiveMaintainer,      // Implemented!
             LICENSE_SCORE: Number(this.hasLicense)                       // Implemented!
         }
-        logger.info(`README Length: ${this.readmeLength}`);
-        logger.info('Contributors:');
+        logger.debug(`README Length: ${this.readmeLength}`);
+        logger.debug('Contributors:');
         this.contributors.forEach((contributions, contributor) => {
-            logger.info(`  ${contributor}: ${contributions}`);
+            logger.debug(`  ${contributor}: ${contributions}`);
         });
 
         const stringify = ndjson.stringify();
@@ -105,13 +100,15 @@ export class Package {
           process.stdout.write(line);
         });
 
-        logger.info(`URL: ${this.url}`);
-        logger.info(`NET_SCORE: ${this.netScore}`);
-        logger.info(`RAMP_UP_SCORE: ${this.rampUp}`);
-        logger.info(`CORRECTNESS_SCORE: ${this.correctness}`);
-        logger.info(`BUS_FACTOR_SCORE: ${this.busFactor}`);
-        logger.info(`RESPONSIVE_MAINTAINER_SCORE: ${this.responsiveMaintainer}`);
-        logger.info(`LICENSE_SCORE: ${Number(this.hasLicense)}`);
+        logger.debug(`URL: ${this.url}`);
+        logger.debug(`NET_SCORE: ${this.netScore}`);
+        logger.debug(`RAMP_UP_SCORE: ${this.rampUp}`);
+        logger.debug(`CORRECTNESS_SCORE: ${this.correctness}`);
+        logger.debug(`BUS_FACTOR_SCORE: ${this.busFactor}`);
+        logger.debug(`RESPONSIVE_MAINTAINER_SCORE: ${this.responsiveMaintainer}`);
+        logger.debug(`LICENSE_SCORE: ${Number(this.hasLicense)}`);
+
+        logger.info(`Metrics score outputted to stdout, URL: ${this.url}`)
     }
   }
 
@@ -132,6 +129,10 @@ export class Package {
         }
         return "";
     }
+
+    getPackageName() {
+        return this.packageName;
+    }
   }
 
 function retrieveGithubKey() {
@@ -141,7 +142,7 @@ function retrieveGithubKey() {
         logger.error(error);
         throw error;
     } else {
-        logger.info("found github API key");
+        logger.info("Found github API key");
         return githubApiKey;
     }
 }
@@ -165,18 +166,20 @@ function calculateRampUp(readmeLength: number) {
     // Rounds to rf decimal places without padding with 0s (rf defined globally)
     rampUpVal = Math.round(rampUpVal * (10 ** rf)) / (10 ** rf);
 
-    return rampUpVal
+    logger.debug(`Calculated rampup value of: ${rampUpVal}`);
+
+    return rampUpVal;
 }
 
 async function readReadmeFile(repoUrl: string) {
     const readmePath = `${repoUrl}/README.md`; // Adjust the filename if necessary
     try {
       const readmeContent = await fs.promises.readFile(readmePath, 'utf-8');
-      //console.log('README Content:');
-      //console.log(readmeContent);
+      logger.debug(`Read from ReadMe file, repo URL: ${repoUrl}`)
       return `${readmeContent}`;
     } catch (error) {
       //console.error('Error reading README:', error);
+      logger.debug(`Failed to read ReadMe file, repo URL: ${repoUrl}`);
       return '';
     }
   }
@@ -220,6 +223,9 @@ function calculateBusFactor(readmeLength: number, contributors: Map<string, numb
     busFactorVal = ((readmeVal + contributorsVal) / 2)/100;
     // Rounds to rf decimal places without padding with 0s (rf defined globally)
     busFactorVal = Math.round(busFactorVal * (10 ** rf)) / (10 ** rf);
+
+    logger.debug(`Calculated bus factor of: ${busFactorVal}`);
+
     return busFactorVal
 }
 
@@ -231,8 +237,10 @@ async function getUserStars(owner: string, packageName: string, token: string) {
     try {
         const response = await axios.get(`https://api.github.com/repos/${owner}/${packageName}`, { headers });
         const stars = response.data.stargazers_count || 0; 
+        logger.debug(`Obtained user stars: ${stars} stars`)
         return stars;
     } catch (error) {
+        logger.info(`Error fetching star count: ${error}`);
         logger.error(`Error fetching star count: ${error}`);
         return 0; 
     }
@@ -248,6 +256,7 @@ async function getOpenIssuesCount(owner: string, packageName: string, token: str
         return openIssuesCount;
     } catch (error) {
         logger.error(`Error fetching open issues count: ${error}`);
+        logger.info(`Error fetching open issues count: ${error}`);
         return 0; 
     }
 }
@@ -261,10 +270,14 @@ async function calculateCorrectness(owner: string, packageName: string, token: s
         const issuesWeight = 0.6;
         const correctnessScore = (stars * starsWeight / 100) + (0.6 - (0.6 * openIssues * issuesWeight / 100));
 
-        return Math.round(correctnessScore / 1000 * (10 ** rf)) / (10 ** rf);
+        const correctness = Math.round(correctnessScore * (10 ** rf)) / (10 ** rf);
+        logger.debug(`Calculated correctness value of: ${correctness}`);
 
+        return correctness
+      
     } catch (error) {
         logger.error(`Error calculating correctness metric: ${error}`);
+        logger.info(`Error calculating correctness metric: ${error}`);
         return -1; 
     }
 }
@@ -301,8 +314,11 @@ async function getCommitFrequency(owner: string, packageName: string, token: str
         const averageTimeInterval = totalTimeInterval / (commitData.length - 1);
         const frequency = ((1000 * 60 * 60 * 24 * 365) - averageTimeInterval) / (1000 * 60 * 60 * 24 * 365);
 
+        logger.debug(`Calculated commit frequency of: ${frequency}`)
+
         return frequency;
     } catch (error) {
+        logger.info(`Error fetching commit frequency: ${error}`);
         logger.error(`Error fetching commit frequency: ${error}`);
         return 0; 
     }
@@ -341,9 +357,12 @@ async function getIssueResolutionTime(owner: string, packageName: string, token:
         const averageTimeInterval = totalTimeInterval / resolvedIssueCount;
         const frequency = ((1000 * 60 * 60 * 24 * 365) - averageTimeInterval) / (1000 * 60 * 60 * 24 * 365);
 
+        logger.debug(`Calculated user resolution time of: ${frequency}`)
+
         return frequency;
     } catch (error) {
         logger.error(`Error fetching issue resolution time: ${error}`);
+        logger.info(`Error fetching issue resolution time: ${error}`);
         return 0;
     }
 }
@@ -359,9 +378,14 @@ async function calculateResponsiveMaintainer(owner: string, packageName: string,
         const issueResolutionWeight = 0.7;
         const responsiveMaintainerScore = commitFrequency * commitFrequencyWeight + issueResolutionTime * issueResolutionWeight;
 
-        return Math.round(responsiveMaintainerScore * (10 ** rf)) / (10 ** rf);
+        const score = Math.round(responsiveMaintainerScore * (10 ** rf)) / (10 ** rf);
+
+        logger.debug(`Calculated responsive maintainer score of: ${score}`)
+
+        return score;
     } catch (error) {
         logger.error(`Error calculating responsive maintainer score: ${error}`);
+        logger.info(`Error calculating responsive maintainer score: ${error}`);
         return -1; 
     }
 }
@@ -369,6 +393,9 @@ async function calculateResponsiveMaintainer(owner: string, packageName: string,
 function calculateNetScore(packageObj: Package) {
     let netScore = 0.4 * packageObj.responsiveMaintainer + 0.3 * packageObj.rampUp + 0.15 * packageObj.correctness + 0.1 * packageObj.busFactor + 0.05 * Number(packageObj.hasLicense);
     let roundedNetScore = Math.round(netScore * (10 ** rf)) / (10 ** rf);
+
+    logger.info(`Calculated net-score: ${roundedNetScore}, for package with URL: ${packageObj.url}`)
+
     return roundedNetScore;
 }
 
@@ -393,7 +420,8 @@ async function getPackageObject(owner: string, packageName: string, token: strin
         packageObj.setContributors(contributorsMap);
     })
     .catch((err) => {
-        logger.error(`Error: ${err}`);
+        logger.error(`Error on axios.get: ${err}`);
+        logger.info(`Error on axios.get: ${err}`);
         packageObj.setContributors(new Map()); 
     });
 
@@ -414,7 +442,7 @@ async function getPackageObject(owner: string, packageName: string, token: strin
             }
         })
         .catch ((err) => {
-            //logger.error(`Failed to get license status: ${err}`);
+            logger.error(`Failed to get license status: ${err}`);
             packageObj.setHasLicense(false);
         });
 
@@ -422,12 +450,14 @@ async function getPackageObject(owner: string, packageName: string, token: strin
         logger.info(`Contributors retrieved for ${owner}/${packageName}`);
     } else {
         logger.error(`Failed to retrieve contributors for ${owner}/${packageName}`);
+        logger.info(`Failed to retrieve contributors for ${owner}/${packageName}`);
     }
 
     if (packageObj.readmeLength != -1) {
         logger.info(`Readme length retrieved for ${owner}/${packageName}`);
     } else {
         logger.error(`Failed to retrieve readme length for ${owner}/${packageName}`);
+        logger.info(`Failed to retrieve readme length for ${owner}/${packageName}`);
     }
 
     await calculateCorrectness(owner, packageName, token).then((correctness) => {
@@ -436,6 +466,7 @@ async function getPackageObject(owner: string, packageName: string, token: strin
 
     const responsiveMaintainer = await calculateResponsiveMaintainer(owner, packageName, token);
     packageObj.setResponsiveMaintainer(responsiveMaintainer);
+
     return packageObj;
 }
 
@@ -464,16 +495,44 @@ async function cloneRepository(repoUrl: string, packageObj: Package) {
     logger.info(`made directory: ${dir}`);
     fs.readdirSync(dir);
 
-    await git.clone({
-        http:http,
-        fs,
-        dir,
-        url: repoUrl,
-        singleBranch: true,
-        depth: 200    
-    });
+    try {    
+        // await git.clone({
+        // http:http,
+        // fs,
+        // dir,
+        // url: repoUrl,
+        // singleBranch: true,
+        // depth: 200    
+        // });
+    }
+    catch (error) {
+        logger.error(`Could not clone repository: error code ${error}`)
+        logger.info(`Could not clone repository: error code ${error}`)
+        return packageObj;
+    }
 
     fs.readdirSync(dir);
+
+    let repoAuthors = new Map();
+    await git.log({fs, dir}) 
+    .then((commits) => {
+        logger.info(`Git log retrieved for ${repoUrl}`);
+    /*commits.forEach((commit, index) => {
+        logger.info(`Commit ${index + 1}:`);
+        logger.info(`OID: ${commit.oid}`);
+        logger.info(`Message: ${commit.commit.message}`);
+        logger.info(`Parent: ${commit.commit.parent.join(', ')}`);
+        logger.info(`Tree: ${commit.commit.tree}`);
+        logger.info(`Author: ${commit.commit.author.name} <${commit.commit.author.email}>`);
+        logger.info(`Committer: ${commit.commit.committer.name} <${commit.commit.committer.email}>`);
+        logger.info(`GPG Signature: ${commit.commit.gpgsig}`);
+    });*/
+    })
+    .catch((error) => {
+        logger.error(`Failed to retrieve git log for ${repoUrl}: ${error.message}`);
+        logger.info(`Failed to retrieve git log for ${repoUrl}: ${error.message}`);
+    });
+
     let repoAuthors = new Map();*/
     
     packageObj.setBusFactor(calculateBusFactor(packageObj.readmeLength, packageObj.contributors));
@@ -499,6 +558,10 @@ async function calculateAllMetrics(urlObjs: Url[]) {
         await cloneRepository(repoUrl, packageObj).then ((returnedPackageObject) => {
             packageObj = returnedPackageObject;
         });
+
+    await cloneRepository(url.url, packageObj).then ((response) => {
+        packageObj = response;
+    });
 
         //console.log(packageObj);
         packageObjs.push(packageObj);
@@ -545,7 +608,8 @@ async function fetchUrlsFromFile(filePath: string) {
           urls.push(urlObj);
         } 
         else {
-          //console.log(`Invalid URL format: ${line}`);
+
+          logger.info(`Invalid URL format: ${line}`);
         }
       }
       return urls;
@@ -579,12 +643,44 @@ async function getGithubDetailsFromNpm(npmUrl: string) {
   }
 }
 
+async function urlToPackage(url: Url, packageObj: Package) {
+    const owner = url.getPackageOwner();
+    const name = url.getPackageName();
 
-  
+    packageObj = await calculateAllMetrics(packageObj, url)
+    packageObj.setURL(url.url);
+
+    logger.info(`Successfully created package with URL: ${packageObj.url}`);
+    packageObj.printMetrics();
+
+    return packageObj;
+}
+
+async function urlsToPackages(urls: Url[]) {
+    var packages: Package[] = [];
+
+    for (const url of urls) {
+        var packageObj = new Package();
+        packageObj = await urlToPackage(url, packageObj);
+        packages.push(packageObj);
+    }
+
+    return packages;
+}
+
+function printAllMetrics(packages: Package[]) {
+    for (const packageObj of packages) {
+        packageObj.printMetrics();
+    }
+}
   
   
 // Usage example
-const githubToken = retrieveGithubKey();
+const  githubToken = retrieveGithubKey();
+// const exampleUrl = new Url("https://github.com/cloudinary/cloudinary_npm", "cloudinary_npm", "cloudinary");
+// const exampleUrl = new Url("https://github.com/mghera02/461Group2", "461Group2", "mghera02");
+// const exampleUrl = new Url("https://github.com/vishnumaiea/ptScheduler", "ptScheduler", "vishnumaiea");
+
 
 let urlsFile = "./run_URL_FILE/urls.txt";
 let urlObjs : Url[] = [];
@@ -599,7 +695,6 @@ fetchUrlsFromFile(urlsFile).then((urls) => {
         //console.log(packageObjs);
     });
 });
-
 
 module.exports = {
     retrieveGithubKey,
