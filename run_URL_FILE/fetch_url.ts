@@ -477,14 +477,14 @@ async function cloneRepository(repoUrl: string, packageObj: Package) {
     fs.readdirSync(dir);
 
     try {    
-        await git.clone({
-        http:http,
-        fs,
-        dir,
-        url: repoUrl,
-        singleBranch: true,
-        depth: 200    
-        });
+        // await git.clone({
+        // http:http,
+        // fs,
+        // dir,
+        // url: repoUrl,
+        // singleBranch: true,
+        // depth: 200    
+        // });
     }
     catch (error) {
         logger.error(`Could not clone repository: error code ${error}`)
@@ -512,7 +512,6 @@ async function cloneRepository(repoUrl: string, packageObj: Package) {
         logger.error(`Failed to retrieve git log for ${repoUrl}: ${error.message}`);
         logger.info(`Failed to retrieve git log for ${repoUrl}: ${error.message}`);
     });
-    console.log("3");
 
     packageObj.setBusFactor(calculateBusFactor(packageObj.readmeLength, packageObj.contributors));
     packageObj.setRampUp(calculateRampUp(packageObj.readmeLength));
@@ -521,7 +520,6 @@ async function cloneRepository(repoUrl: string, packageObj: Package) {
 }
 
 async function calculateAllMetrics(packageObj: Package, url: Url) {
-    console.log(`${url.url}`)
     await getPackageObject(url.getPackageOwner(), url.packageName, githubToken, packageObj)
         .then((returnedPackageObject) => {
             packageObj = returnedPackageObject;
@@ -572,7 +570,7 @@ async function fetchUrlsFromFile(filePath: string) {
           urls.push(urlObj);
         } 
         else {
-          console.log(`Invalid URL format: ${line}`);
+          logger.info(`Invalid URL format: ${line}`);
         }
       }
       return urls;
