@@ -489,7 +489,7 @@ async function removeDirectory(dirPath: string) {
 }
 
 async function cloneRepository(repoUrl: string, packageObj: Package) {
-    /*packageObj.setURL(repoUrl);
+    packageObj.setURL(repoUrl);
     const localDir = './fetch_url_cloned_repos';
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), localDir));
     logger.info(`made directory: ${dir}`);
@@ -516,8 +516,8 @@ async function cloneRepository(repoUrl: string, packageObj: Package) {
     let repoAuthors = new Map();
     await git.log({fs, dir}) 
     .then((commits) => {
-        logger.info(`Git log retrieved for ${repoUrl}`);
-    /*commits.forEach((commit, index) => {
+        /*logger.info(`Git log retrieved for ${repoUrl}`);
+    commits.forEach((commit, index) => {
         logger.info(`Commit ${index + 1}:`);
         logger.info(`OID: ${commit.oid}`);
         logger.info(`Message: ${commit.commit.message}`);
@@ -525,15 +525,12 @@ async function cloneRepository(repoUrl: string, packageObj: Package) {
         logger.info(`Tree: ${commit.commit.tree}`);
         logger.info(`Author: ${commit.commit.author.name} <${commit.commit.author.email}>`);
         logger.info(`Committer: ${commit.commit.committer.name} <${commit.commit.committer.email}>`);
-        logger.info(`GPG Signature: ${commit.commit.gpgsig}`);
-    });*/
+        logger.info(`GPG Signature: ${commit.commit.gpgsig}`);*/
     })
     .catch((error) => {
         logger.error(`Failed to retrieve git log for ${repoUrl}: ${error.message}`);
         logger.info(`Failed to retrieve git log for ${repoUrl}: ${error.message}`);
     });
-
-    let repoAuthors = new Map();*/
     
     packageObj.setBusFactor(calculateBusFactor(packageObj.readmeLength, packageObj.contributors));
     packageObj.setRampUp(calculateRampUp(packageObj.readmeLength));
@@ -641,31 +638,6 @@ async function getGithubDetailsFromNpm(npmUrl: string) {
     console.error('Error fetching npm package data:', error);
     return null;
   }
-}
-
-async function urlToPackage(url: Url, packageObj: Package) {
-    const owner = url.getPackageOwner();
-    const name = url.getPackageName();
-
-    packageObj = await calculateAllMetrics(packageObj, url)
-    packageObj.setURL(url.url);
-
-    logger.info(`Successfully created package with URL: ${packageObj.url}`);
-    packageObj.printMetrics();
-
-    return packageObj;
-}
-
-async function urlsToPackages(urls: Url[]) {
-    var packages: Package[] = [];
-
-    for (const url of urls) {
-        var packageObj = new Package();
-        packageObj = await urlToPackage(url, packageObj);
-        packages.push(packageObj);
-    }
-
-    return packages;
 }
 
 function printAllMetrics(packages: Package[]) {
