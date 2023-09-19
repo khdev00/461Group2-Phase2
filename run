@@ -10,6 +10,7 @@ check_if_exists() {
   return 1;
 }
 
+# Handles the case where the dep could not be installed
 handle_install_error() {
   local name="$1";
   check_if_exists $name
@@ -24,6 +25,19 @@ handle_install_error() {
   exit 1;
 }
 
+# Trims all leading and trailing whitespace, as well as newlines
+trim_name() {
+  local str="$1"
+  # Trim leading and trailing whitespace
+  str="${str#"${str%%[![:space:]]*}"}"
+  str="${str%"${str##*[![:space:]]}"}"
+  
+  # Remove newline characters
+  str="$(echo -e "$str" | tr -d '\n')"
+  
+  echo "$str"
+}
+
 install_dependencies() {
   # Installs all dependencies listed in the file at $file_path
   npm install &> /dev/null || { echo "Failed to install dependencies"; exit 1; }
@@ -36,16 +50,24 @@ install_dependencies() {
     exit 1;
   fi
 
+  # Loops through all names in the file
   while IFS= read -r line || [[ -n "$line" ]]; do 
-    npm install $line &> /dev/null || handle_install_error $line
-    ((num_installed++))
+    # trims names
+    trimmed_line=$(trim_name "$line");
+
+    # only try to install if the string is nonempty
+    if [ -n "$trimmed_line" ]; then
+      npm install $trimmed_line &> /dev/null || handle_install_error $trimmed_line
+      ((num_installed++))
+    fi
   done < "$file_path"
 
+  # Output to stdout
   echo "$num_installed dependencies installed..."
 }
 
 
-
+# Main logic for the file
 if [ "$1" == "install" ]; then
   # Install Node.js dependencies
   install_dependencies "$dep_file_path"
@@ -57,6 +79,7 @@ elif [ "$1" == "test" ]; then
   echo "X/Y test cases passed. Z% line coverage achieved."
   exit 0
 else
+  # Runs if the first argument is a valid file
   if [ -f "$1" ]; then
     ts-node ./run_URL_FILE/fetch_url.ts "$1";
     exit 0;
