@@ -99,12 +99,14 @@ export class Package {
         });
 
         logger.debug(`URL: ${this.url}`);
-        logger.info(`NET_SCORE: ${this.netScore}`);
-        logger.info(`RAMP_UP_SCORE: ${this.rampUp}`);
+        logger.debug(`NET_SCORE: ${this.netScore}`);
+        logger.debug(`RAMP_UP_SCORE: ${this.rampUp}`);
         logger.debug(`CORRECTNESS_SCORE: ${this.correctness}`);
         logger.debug(`BUS_FACTOR_SCORE: ${this.busFactor}`);
         logger.debug(`RESPONSIVE_MAINTAINER_SCORE: ${this.responsiveMaintainer}`);
         logger.debug(`LICENSE_SCORE: ${Number(this.hasLicense)}`);
+
+        logger.info(`Metrics score outputted to stdout, URL: ${this.url}`)
     }
   }
 
@@ -138,7 +140,7 @@ function retrieveGithubKey() {
         logger.error(error);
         throw error;
     } else {
-        logger.info("found github API key");
+        logger.info("Found github API key");
         return githubApiKey;
     }
 }
@@ -162,18 +164,20 @@ function calculateRampUp(readmeLength: number) {
     // Rounds to rf decimal places without padding with 0s (rf defined globally)
     rampUpVal = Math.round(rampUpVal * (10 ** rf)) / (10 ** rf);
 
-    return rampUpVal
+    logger.debug(`Calculated rampup value of: ${rampUpVal}`);
+
+    return rampUpVal;
 }
 
 async function readReadmeFile(repoUrl: string) {
     const readmePath = `${repoUrl}/README.md`; // Adjust the filename if necessary
     try {
       const readmeContent = await fs.promises.readFile(readmePath, 'utf-8');
-      //console.log('README Content:');
-      //console.log(readmeContent);
+      logger.debug(`Read from ReadMe file, repo URL: ${repoUrl}`)
       return `${readmeContent}`;
     } catch (error) {
       //console.error('Error reading README:', error);
+      logger.debug(`Failed to read ReadMe file, repo URL: ${repoUrl}`);
       return '';
     }
   }
@@ -217,6 +221,9 @@ function calculateBusFactor(readmeLength: number, contributors: Map<string, numb
     busFactorVal = ((readmeVal + contributorsVal) / 2)/100;
     // Rounds to rf decimal places without padding with 0s (rf defined globally)
     busFactorVal = Math.round(busFactorVal * (10 ** rf)) / (10 ** rf);
+
+    logger.debug(`Calculated bus factor of: ${busFactorVal}`);
+
     return busFactorVal
 }
 
@@ -228,8 +235,10 @@ async function getUserStars(owner: string, packageName: string, token: string) {
     try {
         const response = await axios.get(`https://api.github.com/repos/${owner}/${packageName}`, { headers });
         const stars = response.data.stargazers_count || 0; 
+        logger.debug(`Obtained user stars: ${stars} stars`)
         return stars;
     } catch (error) {
+        logger.info(`Error fetching star count: ${error}`);
         logger.error(`Error fetching star count: ${error}`);
         return 0; 
     }
@@ -245,6 +254,7 @@ async function getOpenIssuesCount(owner: string, packageName: string, token: str
         return openIssuesCount;
     } catch (error) {
         logger.error(`Error fetching open issues count: ${error}`);
+        logger.info(`Error fetching open issues count: ${error}`);
         return 0; 
     }
 }
@@ -258,10 +268,15 @@ async function calculateCorrectness(owner: string, packageName: string, token: s
         const issuesWeight = 0.6;
         const correctnessScore = (stars * starsWeight / 100) + (0.6 - (0.6 * openIssues * issuesWeight / 100));
 
-        return Math.round(correctnessScore * (10 ** rf)) / (10 ** rf);
+        const correctness = Math.round(correctnessScore * (10 ** rf)) / (10 ** rf);
+
+        logger.debug(`Calculated correctness value of: ${correctness}`);
+
+        return correctness
 
     } catch (error) {
         logger.error(`Error calculating correctness metric: ${error}`);
+        logger.info(`Error calculating correctness metric: ${error}`);
         return -1; 
     }
 }
@@ -298,8 +313,11 @@ async function getCommitFrequency(owner: string, packageName: string, token: str
         const averageTimeInterval = totalTimeInterval / (commitData.length - 1);
         const frequency = ((1000 * 60 * 60 * 24 * 365) - averageTimeInterval) / (1000 * 60 * 60 * 24 * 365);
 
+        logger.debug(`Calculated commit frequency of: ${frequency}`)
+
         return frequency;
     } catch (error) {
+        logger.info(`Error fetching commit frequency: ${error}`);
         logger.error(`Error fetching commit frequency: ${error}`);
         return 0; 
     }
@@ -338,9 +356,12 @@ async function getIssueResolutionTime(owner: string, packageName: string, token:
         const averageTimeInterval = totalTimeInterval / resolvedIssueCount;
         const frequency = ((1000 * 60 * 60 * 24 * 365) - averageTimeInterval) / (1000 * 60 * 60 * 24 * 365);
 
+        logger.debug(`Calculated user resolution time of: ${frequency}`)
+
         return frequency;
     } catch (error) {
         logger.error(`Error fetching issue resolution time: ${error}`);
+        logger.info(`Error fetching issue resolution time: ${error}`);
         return 0;
     }
 }
@@ -356,9 +377,14 @@ async function calculateResponsiveMaintainer(owner: string, packageName: string,
         const issueResolutionWeight = 0.7;
         const responsiveMaintainerScore = commitFrequency * commitFrequencyWeight + issueResolutionTime * issueResolutionWeight;
 
-        return Math.round(responsiveMaintainerScore * (10 ** rf)) / (10 ** rf);
+        const score = Math.round(responsiveMaintainerScore * (10 ** rf)) / (10 ** rf);
+
+        logger.debug(`Calculated responsive maintainer score of: ${score}`)
+
+        return score;
     } catch (error) {
         logger.error(`Error calculating responsive maintainer score: ${error}`);
+        logger.info(`Error calculating responsive maintainer score: ${error}`);
         return -1; 
     }
 }
@@ -366,6 +392,9 @@ async function calculateResponsiveMaintainer(owner: string, packageName: string,
 function calculateNetScore(packageObj: Package) {
     let netScore = 0.4 * packageObj.responsiveMaintainer + 0.3 * packageObj.rampUp + 0.15 * packageObj.correctness + 0.1 * packageObj.busFactor + 0.05 * Number(packageObj.hasLicense);
     let roundedNetScore = Math.round(netScore * (10 ** rf)) / (10 ** rf);
+
+    logger.info(`Calculated net-score: ${roundedNetScore}, for package with URL: ${packageObj.url}`)
+
     return roundedNetScore;
 }
 
@@ -390,7 +419,8 @@ async function getPackageObject(owner: string, packageName: string, token: strin
         packageObj.setContributors(contributorsMap);
     })
     .catch((err) => {
-        logger.error(`Error: ${err}`);
+        logger.error(`Error on axios.get: ${err}`);
+        logger.info(`Error on axios.get: ${err}`);
         packageObj.setContributors(new Map()); 
     });
 
@@ -419,12 +449,14 @@ async function getPackageObject(owner: string, packageName: string, token: strin
         logger.info(`Contributors retrieved for ${owner}/${packageName}`);
     } else {
         logger.error(`Failed to retrieve contributors for ${owner}/${packageName}`);
+        logger.info(`Failed to retrieve contributors for ${owner}/${packageName}`);
     }
 
     if (packageObj.readmeLength != -1) {
         logger.info(`Readme length retrieved for ${owner}/${packageName}`);
     } else {
         logger.error(`Failed to retrieve readme length for ${owner}/${packageName}`);
+        logger.info(`Failed to retrieve readme length for ${owner}/${packageName}`);
     }
 
     await calculateCorrectness(owner, packageName, token).then((correctness) => {
@@ -433,6 +465,7 @@ async function getPackageObject(owner: string, packageName: string, token: strin
 
     const responsiveMaintainer = await calculateResponsiveMaintainer(owner, packageName, token);
     packageObj.setResponsiveMaintainer(responsiveMaintainer);
+
     return packageObj;
 }
 
@@ -443,14 +476,21 @@ async function cloneRepository(repoUrl: string, packageObj: Package) {
     logger.info(`made directory: ${dir}`);
     fs.readdirSync(dir);
 
-    await git.clone({
+    try {    
+        await git.clone({
         http:http,
         fs,
         dir,
         url: repoUrl,
         singleBranch: true,
         depth: 200    
-    });
+        });
+    }
+    catch (error) {
+        logger.error(`Could not clone repository: error code ${error}`)
+        logger.info(`Could not clone repository: error code ${error}`)
+        return packageObj;
+    }
 
     fs.readdirSync(dir);
     let repoAuthors = new Map();
@@ -470,21 +510,24 @@ async function cloneRepository(repoUrl: string, packageObj: Package) {
     })
     .catch((error) => {
         logger.error(`Failed to retrieve git log for ${repoUrl}: ${error.message}`);
+        logger.info(`Failed to retrieve git log for ${repoUrl}: ${error.message}`);
     });
-    
+    console.log("3");
+
     packageObj.setBusFactor(calculateBusFactor(packageObj.readmeLength, packageObj.contributors));
     packageObj.setRampUp(calculateRampUp(packageObj.readmeLength));
     packageObj.setNetScore(calculateNetScore(packageObj));
     return packageObj;
 }
 
-async function calculateAllMetrics(packageObj: Package, exampleUrl: Url) {
-    await getPackageObject(exampleUrl.getPackageOwner(), exampleUrl.packageName, githubToken, packageObj)
+async function calculateAllMetrics(packageObj: Package, url: Url) {
+    console.log(`${url.url}`)
+    await getPackageObject(url.getPackageOwner(), url.packageName, githubToken, packageObj)
         .then((returnedPackageObject) => {
             packageObj = returnedPackageObject;
         })
 
-    await cloneRepository(exampleUrl.url, packageObj).then ((response) => {
+    await cloneRepository(url.url, packageObj).then ((response) => {
         packageObj = response;
     });
 
@@ -567,8 +610,11 @@ async function urlToPackage(url: Url, packageObj: Package) {
     const owner = url.getPackageOwner();
     const name = url.getPackageName();
 
-    packageObj = await getPackageObject(owner, name,  githubToken, packageObj)
+    packageObj = await calculateAllMetrics(packageObj, url)
     packageObj.setURL(url.url);
+
+    logger.info(`Successfully created package with URL: ${packageObj.url}`);
+    packageObj.printMetrics();
 
     return packageObj;
 }
@@ -611,10 +657,9 @@ let urlsFile = "./run_URL_FILE/urls.txt";
 //     packageObj.printMetrics();
 // });
 
+// Ignoring return value right now
 fetchUrlsFromFile(urlsFile).then((urls) => {
-    urlsToPackages(urls).then((packages) => {
-        printAllMetrics(packages)
-    });
+    urlsToPackages(urls);
 });
 
 module.exports = {
