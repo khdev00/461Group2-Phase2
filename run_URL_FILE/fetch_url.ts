@@ -210,13 +210,6 @@ async function getPackageObject(owner: string, packageName: string, token: strin
         logger.info(`Failed to retrieve contributors for ${owner}/${packageName}`);
     }
 
-    if (packageObj.readmeLength != -1) {
-        logger.info(`Readme length retrieved for ${owner}/${packageName}`);
-    } else {
-        logger.error(`Failed to retrieve readme length for ${owner}/${packageName}`);
-        logger.info(`Failed to retrieve readme length for ${owner}/${packageName}`);
-    }
-
     await calculateCorrectness(owner, packageName, token).then((correctness) => {
         packageObj.setCorrectness(correctness);
     });
