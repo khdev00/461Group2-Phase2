@@ -2,6 +2,13 @@ import winston, { Logform } from 'winston'; //Logging library
 import axios from 'axios'; // Library to conveniantly send HTTP requests to interact with REST API
 import { logger, Package } from './fetch_url'
 
+import { 
+    getUserStars,
+    getOpenIssuesCount, 
+    getCommitFrequency,
+    getIssueResolutionTime,
+    
+} from './metric_calcs_helpers';
 
 // This is what controlls the rounding for the metrics,
 // In class we were told to round to 5dp without padding with zeros
@@ -77,38 +84,6 @@ export function calculateBusFactor(readmeLength: number, contributors: Map<strin
     return busFactorVal
 }
 
-async function getUserStars(owner: string, packageName: string, token: string) {
-    const headers = {
-        Authorization: `Bearer ${token}`,
-    };
-
-    try {
-        const response = await axios.get(`https://api.github.com/repos/${owner}/${packageName}`, { headers });
-        const stars = response.data.stargazers_count || 0; 
-        logger.debug(`Obtained user stars: ${stars} stars`)
-        return stars;
-    } catch (error) {
-        logger.info(`Error fetching star count: ${error}`);
-        logger.error(`Error fetching star count: ${error}`);
-        return 0; 
-    }
-}
-
-async function getOpenIssuesCount(owner: string, packageName: string, token: string) {
-    const headers = {
-        Authorization: `Bearer ${token}`,
-    };
-    try {
-        const response = await axios.get(`https://api.github.com/repos/${owner}/${packageName}/issues?state=open`, { headers });
-        const openIssuesCount = response.data.length || 0; 
-        return openIssuesCount;
-    } catch (error) {
-        logger.error(`Error fetching open issues count: ${error}`);
-        logger.debug(`Error fetching open issues count: ${error}`);
-        return 0; 
-    }
-}
-
 export async function calculateCorrectness(owner: string, packageName: string, token: string) {
     try {
         const stars = await getUserStars(owner, packageName, token);
@@ -127,91 +102,6 @@ export async function calculateCorrectness(owner: string, packageName: string, t
         logger.error(`Error calculating correctness metric: ${error}`);
         logger.info(`Error calculating correctness metric: ${error}`);
         return -1; 
-    }
-}
-
-async function getCommitFrequency(owner: string, packageName: string, token: string) {
-    const headers = {
-        Authorization: `Bearer ${token}`,
-    };
-    try {
-        const response = await axios.get(`https://api.github.com/repos/${owner}/${packageName}/commits`, { headers });
-
-        const commitData = response.data;
-        if (commitData.length < 2) {
-            //not enough commits for frequency calculation
-            return 0;
-        }
-
-        //sort commitData by commit timestamp in ascending order
-        commitData.sort((a: any, b: any) => {
-            const timestampA = new Date(a.commit.author.date).getTime();
-            const timestampB = new Date(b.commit.author.date).getTime();
-            return timestampA - timestampB;
-        });
-
-        //calculate the average time between commits in milliseconds
-        let totalTimeInterval = 0;
-        for (let i = 1; i < commitData.length; i++) {
-            const commitDate = new Date(commitData[i].commit.author.date);
-            const prevCommitDate = new Date(commitData[i - 1].commit.author.date);
-            const timeInterval = commitDate.getTime() - prevCommitDate.getTime();
-            totalTimeInterval += timeInterval;
-        }
-
-        const averageTimeInterval = totalTimeInterval / (commitData.length - 1);
-        const frequency = ((1000 * 60 * 60 * 24 * 365) - averageTimeInterval) / (1000 * 60 * 60 * 24 * 365);
-
-        logger.debug(`Calculated commit frequency of: ${frequency}`)
-
-        return frequency;
-    } catch (error) {
-        logger.info(`Error fetching commit frequency: ${error}`);
-        logger.error(`Error fetching commit frequency: ${error}`);
-        return 0; 
-    }
-}
-
-async function getIssueResolutionTime(owner: string, packageName: string, token: string) {
-    const headers = {
-        Authorization: `Bearer ${token}`,
-    };
-
-    try {
-        const response = await axios.get(`https://api.github.com/repos/${owner}/${packageName}/issues?state=closed`, { headers });
-
-        const issueData = response.data;
-        if (issueData.length === 0) {
-            return 0;
-        }
-
-        //calculate the average time between issue creation and resolution in milliseconds
-        let totalTimeInterval = 0;
-        let resolvedIssueCount = 0;
-        for (const issue of issueData) {
-            if (issue.state === 'closed' && issue.created_at && issue.closed_at) {
-                const createDate = new Date(issue.created_at);
-                const resolveDate = new Date(issue.closed_at);
-                const timeInterval = resolveDate.getTime() - createDate.getTime();
-                totalTimeInterval += timeInterval;
-                resolvedIssueCount++;
-            }
-        }
-        logger.info(`issues: ${resolvedIssueCount}`);
-        if (resolvedIssueCount === 0) {
-            return 0;
-        }
-
-        const averageTimeInterval = totalTimeInterval / resolvedIssueCount;
-        const frequency = ((1000 * 60 * 60 * 24 * 365) - averageTimeInterval) / (1000 * 60 * 60 * 24 * 365);
-
-        logger.debug(`Calculated user resolution time of: ${frequency}`)
-
-        return frequency;
-    } catch (error) {
-        logger.error(`Error fetching issue resolution time: ${error}`);
-        logger.info(`Error fetching issue resolution time: ${error}`);
-        return 0;
     }
 }
 

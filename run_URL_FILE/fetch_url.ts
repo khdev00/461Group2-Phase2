@@ -1,7 +1,8 @@
 // How to run this file
-// Once you have npm ts-node installed, use ts-node ./run_URL_FILE/fetch_url.ts
-// You will need a .env file in the root directory with GITHUB_TOKEN=*your key*
-// Make sure your .env is in .gitignore
+// 1. Run ./run install
+// 2. You will need a .env file in the root directory with GITHUB_TOKEN=*your key*
+//    Make sure your .env is in .gitignore
+// 3. Run ./run *path to your url file*
 
 import dotenv from 'dotenv'; // For retrieving env variables
 import axios from 'axios'; // Library to conveniantly send HTTP requests to interact with REST API
@@ -10,15 +11,14 @@ import { getLogger } from './logger';
 
 //import * as ndjson from 'ndjson';
 import ndjson from 'ndjson';
-import * as git from 'isomorphic-git'; // For cloning repos locally and getting git metadata
 import fs from 'fs'; // Node.js file system module for cloning repos  
 import os from 'os'
 import path from 'path'
 import { print } from 'graphql';
 const http = require("isomorphic-git/http/node");
 
+// For cloning repo
 const BlueBirdPromise = require('bluebird')
-
 const tar = require('tar');
 import { promisify } from 'util';
 import { exec } from 'child_process';
@@ -33,6 +33,10 @@ import {
     calculateResponsiveMaintainer,
     calculateNetScore,
 } from './metric_calcs';
+
+import { 
+    readReadmeFile,
+} from './metric_calcs_helpers';
 
 dotenv.config();
 
@@ -94,12 +98,12 @@ export class Package {
     printMetrics() {
         const output = {
             URL : this.url,                             
-            NET_SCORE: this.netScore,                                    // Implemented!
-            RAMP_UP_SCORE: this.rampUp,                                  // Implemented! 
-            CORRECTNESS_SCORE: this.correctness,                         // Implemented!
-            BUS_FACTOR_SCORE: this.busFactor,                            // Implemented!
-            RESPONSIVE_MAINTAINER_SCORE: this.responsiveMaintainer,      // Implemented!
-            LICENSE_SCORE: Number(this.hasLicense)                       // Implemented!
+            NET_SCORE: this.netScore,                                    
+            RAMP_UP_SCORE: this.rampUp,                                 
+            CORRECTNESS_SCORE: this.correctness,                        
+            BUS_FACTOR_SCORE: this.busFactor,                          
+            RESPONSIVE_MAINTAINER_SCORE: this.responsiveMaintainer,      
+            LICENSE_SCORE: Number(this.hasLicense)                   
         }
         logger.debug(`README Length: ${this.readmeLength}`);
         logger.debug('Contributors:');
@@ -188,16 +192,6 @@ async function getPackageObject(owner: string, packageName: string, token: strin
         packageObj.setContributors(new Map()); 
     });
 
-    await axios.get(`https://api.github.com/repos/${owner}/${packageName}/readme`,{headers,})
-        .then((response) => {
-            const readmeContent = Buffer.from(response.data.content, 'base64').toString('utf-8');
-            packageObj.setReadmeLength(readmeContent.length);
-        })
-        .catch ((err) => {
-            logger.error(`Error: ${err}`);
-            packageObj.setReadmeLength(-1);
-        });
-
     await axios.get(`https://api.github.com/repos/${owner}/${packageName}/license`,{headers,})
         .then((response) => {
             if (response.status == 200) {
@@ -231,26 +225,6 @@ async function getPackageObject(owner: string, packageName: string, token: strin
     packageObj.setResponsiveMaintainer(responsiveMaintainer);
 
     return packageObj;
-}
-
-async function readReadmeFile(repoUrl: string, cloneDir: string) {
-    try {
-        // Check if the README file exists in the cloned repository
-        const readmePath = path.join(cloneDir, 'README.md'); // Adjust the file name if it's not README.md
-
-        if (fs.existsSync(readmePath)) {
-            // Read the README file content
-            const readmeContent = fs.readFileSync(readmePath, 'utf-8');
-            //console.log(`README Content:\n${readmeContent}`);
-            return readmeContent;
-        } else {
-            //console.log('README file not found in the repository.');
-            return '';
-        }
-    } catch (error) {
-        //console.error('Error reading README file:', error);
-        return '';
-    }
 }
 
 async function extractTarball(tarballPath: string, targetDir: string): Promise<void> {
@@ -290,15 +264,13 @@ async function cloneRepository(repoUrl: string, packageObj: Package) {
 
         // Read and display the README file
         // Get readme length
-        await readReadmeFile(repoUrl, cloneDir).then ((response) => {
+        await readReadmeFile(cloneDir).then ((response) => {
             packageObj.setReadmeLength(String(response).length);
         });
     
         // Clean up the temporary tarball file
         fs.unlinkSync(tarballPath);
     
-        //console.log(`Repository cloned to: ${cloneDir}`);
-
     } catch (error) {
         //console.error('Error cloning repository:', error);
     }
@@ -324,11 +296,9 @@ async function calculateAllMetrics(urlObjs: Url[]) {
     return BlueBirdPromise.map(urlObjs, (url:Url) => {
         let repoUrl = `https://github.com/${url.getPackageOwner()}/${url.packageName}`;
         let packageObj = packageObjs[idx++];
-        console.log(repoUrl);
         return new Promise(resolve => {
           cloneRepository(repoUrl, packageObj)
           .then((response) => {
-            console.log(response);
             resolve(response);
            });
         });
