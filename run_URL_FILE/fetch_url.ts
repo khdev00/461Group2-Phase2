@@ -346,7 +346,7 @@ async function fetchUrlsFromFile(filePath: string) {
       return urls;
     } 
     catch (error) {
-      console.error('Error reading file:', error);
+      logger.error('Error reading file:', error);
       return [];
     }
 }
@@ -402,5 +402,6 @@ module.exports = {
     retrieveGithubKey,
     getPackageObject,
     cloneRepository,
-    logger
+    logger,
+    Package
 };

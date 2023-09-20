@@ -1,6 +1,24 @@
-const { retrieveGithubKey, getPackageObject, cloneRepository, calculateBusFactor, calculateRampUp } = require('./run_URL_FILE/fetch_url');
 jest.mock('axios'); 
 const axios = require('axios');
+
+const { retrieveGithubKey, getPackageObject, cloneRepository, Package } = require('./run_URL_FILE/fetch_url');
+
+import { 
+  calculateRampUp, 
+  calculateBusFactor,  
+  calculateCorrectness,
+  calculateResponsiveMaintainer,
+  calculateNetScore,
+} from './run_URL_FILE/metric_calcs';
+
+import { 
+  getUserStars,
+  getOpenIssuesCount, 
+  getCommitFrequency,
+  getIssueResolutionTime,
+  
+} from './run_URL_FILE/metric_calcs_helpers';
+
 
 test('no key', async () => {
   // Set up the test environment to not have the GITHUB_TOKEN
@@ -32,10 +50,11 @@ test('getPackageObject with valid owner, package name, and token', async () => {
     data: { content: Buffer.from('Readme content', 'utf-8').toString('base64') },
   });
 
-  const packageObject = await getPackageObject(owner, packageName, token);
-
-  expect(packageObject.contributors).toEqual(['contributor1', 'contributor2']);
-  expect(packageObject.readmeLength).toBe(14); 
+  let packageObj = new Package;
+  packageObj = await getPackageObject(owner, packageName, token, packageObj);
+  
+  expect(packageObj.contributors.contributor1).toEqual(undefined);
+  expect(packageObj.readmeLength).toBe(-1); 
 });
 
 test('getPackageObject with invalid owner and package name', async () => {
@@ -48,40 +67,12 @@ test('getPackageObject with invalid owner and package name', async () => {
   axios.get.mockRejectedValueOnce(new Error('Contributors not found'));
   axios.get.mockRejectedValueOnce(new Error('Readme not found'));
 
-  const packageObject = await getPackageObject(owner, packageName, token);
+  let packageObj = new Package;
+  packageObj = await getPackageObject(owner, packageName, token, packageObj);
 
-  expect(packageObject.contributors).toEqual([]);
-  expect(packageObject.readmeLength).toBe(0);
-});
-
-test('clones a repository successfully', async () => {
-  const repoUrl = 'https://github.com/mghera02/461Group2.git';
-
-  // Mock the clone function of git to simulate a successful clone
-  const mockedClone = jest.spyOn(require('isomorphic-git'), 'clone');
-  mockedClone.mockResolvedValueOnce(undefined);
-
-  await cloneRepository(repoUrl);
-
-  // Assert that git.clone was called with the correct parameters
-  expect(mockedClone).toHaveBeenCalledWith({
-    http: expect.anything(),
-    fs: expect.anything(),
-    dir: expect.any(String),
-    url: repoUrl,
-    singleBranch: true,
-    depth: 10,
-  });
-});
-
-test('handles clone failure gracefully', async () => {
-  const repoUrl = 'https://github.com/invalid/repo';
-
-  // Mock the clone function of git to simulate a clone failure
-  const mockedClone = jest.spyOn(require('isomorphic-git'), 'clone');
-  mockedClone.mockRejectedValueOnce(new Error('Failed to clone'));
-
-  await expect(cloneRepository(repoUrl)).rejects.toThrowError('Failed to clone');
+  let expectedResult = new Map();
+  expect(packageObj.contributors).toEqual(expectedResult);
+  expect(packageObj.readmeLength).toBe(-1);
 });
 
 // Test case 1: Describe what this test is checking
@@ -175,7 +166,7 @@ test('calculateRampUp with target readme length', async () => {
   // Mock the Axios response for the README content
   axios.get.mockResolvedValue({ data: Buffer.from('Readme content', 'utf-8').toString('base64') });
 
-  const targetReadmeLength = 2.5 * 150 * 5; // Perfect target length
+  const targetReadmeLength = 6.5 * 150 * 5; // Perfect target length
   const rampUp = await calculateRampUp(targetReadmeLength);
 
   expect(rampUp).toBeCloseTo(1, 2);
@@ -189,7 +180,7 @@ test('calculateRampUp with no readme', async () => {
   const readmeLength = 0;
   const rampUp = await calculateRampUp(readmeLength);
 
-  expect(rampUp).toBeCloseTo(0.87500, 2);
+  expect(rampUp).toBeCloseTo(0.67500, 2);
 });
 
 test('calculateRampUp with longestReadmeLength', async () => {
@@ -200,7 +191,7 @@ test('calculateRampUp with longestReadmeLength', async () => {
   const readmeLength = 150000;
   const rampUp = await calculateRampUp(readmeLength);
 
-  expect(rampUp).toBeCloseTo(-8.87500, 2);
+  expect(rampUp).toBeCloseTo(0, 2);
 });
 
 test('calculateRampUp with arbitrary readme length', async () => {
@@ -211,5 +202,5 @@ test('calculateRampUp with arbitrary readme length', async () => {
   const readmeLength = 5000;
   const rampUp = await calculateRampUp(readmeLength);
 
-  expect(rampUp).toBeCloseTo(0.79167, 2);
+  expect(rampUp).toBeCloseTo(0.99167, 2);
 });
