@@ -22,6 +22,7 @@ const BlueBirdPromise = require('bluebird')
 const tar = require('tar');
 import { promisify } from 'util';
 import { exec } from 'child_process';
+import * as fsExtra from 'fs-extra';
 const execAsync = promisify(exec);
 
 const packageObjs: Package[] = [];
@@ -263,6 +264,8 @@ async function cloneRepository(repoUrl: string, packageObj: Package) {
     
         // Clean up the temporary tarball file
         fs.unlinkSync(tarballPath);
+
+        await fsExtra.remove(cloneDir);
     
     } catch (error) {
         //console.error('Error cloning repository:', error);
