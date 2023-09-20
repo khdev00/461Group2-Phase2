@@ -1,7 +1,8 @@
 // How to run this file
-// Once you have npm ts-node installed, use ts-node ./run_URL_FILE/fetch_url.ts
-// You will need a .env file in the root directory with GITHUB_TOKEN=*your key*
-// Make sure your .env is in .gitignore
+// 1. Run ./run install
+// 2. You will need a .env file in the root directory with GITHUB_TOKEN=*your key*
+//    Make sure your .env is in .gitignore
+// 3. Run ./run *path to your url file*
 
 import dotenv from 'dotenv'; // For retrieving env variables
 import axios from 'axios'; // Library to conveniantly send HTTP requests to interact with REST API
@@ -10,14 +11,20 @@ import { getLogger } from './logger';
 
 //import * as ndjson from 'ndjson';
 import ndjson from 'ndjson';
-import * as git from 'isomorphic-git'; // For cloning repos locally and getting git metadata
 import fs from 'fs'; // Node.js file system module for cloning repos  
 import os from 'os'
 import path from 'path'
 import { print } from 'graphql';
 const http = require("isomorphic-git/http/node");
 
-import { execSync } from 'child_process';
+// For cloning repo
+const BlueBirdPromise = require('bluebird')
+const tar = require('tar');
+import { promisify } from 'util';
+import { exec } from 'child_process';
+const execAsync = promisify(exec);
+
+const packageObjs: Package[] = [];
 
 import { 
     calculateRampUp, 
@@ -26,6 +33,10 @@ import {
     calculateResponsiveMaintainer,
     calculateNetScore,
 } from './metric_calcs';
+
+import { 
+    readReadmeFile,
+} from './metric_calcs_helpers';
 
 dotenv.config();
 
@@ -87,12 +98,12 @@ export class Package {
     printMetrics() {
         const output = {
             URL : this.url,                             
-            NET_SCORE: this.netScore,                                    // Implemented!
-            RAMP_UP_SCORE: this.rampUp,                                  // Implemented! 
-            CORRECTNESS_SCORE: this.correctness,                         // Implemented!
-            BUS_FACTOR_SCORE: this.busFactor,                            // Implemented!
-            RESPONSIVE_MAINTAINER_SCORE: this.responsiveMaintainer,      // Implemented!
-            LICENSE_SCORE: Number(this.hasLicense)                       // Implemented!
+            NET_SCORE: this.netScore,                                    
+            RAMP_UP_SCORE: this.rampUp,                                 
+            CORRECTNESS_SCORE: this.correctness,                        
+            BUS_FACTOR_SCORE: this.busFactor,                          
+            RESPONSIVE_MAINTAINER_SCORE: this.responsiveMaintainer,      
+            LICENSE_SCORE: Number(this.hasLicense)                   
         }
         logger.debug(`README Length: ${this.readmeLength}`);
         logger.debug('Contributors:');
@@ -181,16 +192,6 @@ async function getPackageObject(owner: string, packageName: string, token: strin
         packageObj.setContributors(new Map()); 
     });
 
-    await axios.get(`https://api.github.com/repos/${owner}/${packageName}/readme`,{headers,})
-        .then((response) => {
-            const readmeContent = Buffer.from(response.data.content, 'base64').toString('utf-8');
-            packageObj.setReadmeLength(readmeContent.length);
-        })
-        .catch ((err) => {
-            logger.error(`Error: ${err}`);
-            packageObj.setReadmeLength(-1);
-        });
-
     await axios.get(`https://api.github.com/repos/${owner}/${packageName}/license`,{headers,})
         .then((response) => {
             if (response.status == 200) {
@@ -209,13 +210,6 @@ async function getPackageObject(owner: string, packageName: string, token: strin
         logger.info(`Failed to retrieve contributors for ${owner}/${packageName}`);
     }
 
-    if (packageObj.readmeLength != -1) {
-        logger.info(`Readme length retrieved for ${owner}/${packageName}`);
-    } else {
-        logger.error(`Failed to retrieve readme length for ${owner}/${packageName}`);
-        logger.info(`Failed to retrieve readme length for ${owner}/${packageName}`);
-    }
-
     await calculateCorrectness(owner, packageName, token).then((correctness) => {
         packageObj.setCorrectness(correctness);
     });
@@ -226,82 +220,82 @@ async function getPackageObject(owner: string, packageName: string, token: strin
     return packageObj;
 }
 
+async function extractTarball(tarballPath: string, targetDir: string): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+        fs.createReadStream(tarballPath)
+            .pipe(tar.extract({ cwd: targetDir, strip: 1 }))
+            .on('error', reject)
+            .on('end', resolve);
+    });
+}
+
 async function cloneRepository(repoUrl: string, packageObj: Package) {
     packageObj.setURL(repoUrl);
-    const localDir = './fetch_url_cloned_repos';
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), localDir));
-    logger.info(`made directory: ${dir}`);
-    fs.readdirSync(dir);
+    
+    try {
+        // Create a directory to clone the repository into
+        const cloneDir = path.join(__dirname, 'temp');
+        if (!fs.existsSync(cloneDir)) {
+            fs.mkdirSync(cloneDir);
+        }
+    
+        // Fetch the GitHub repository's tarball URL
+        const tarballUrl = `${repoUrl}/archive/master.tar.gz`;
+    
+        // Download the tarball to a temporary file
+        const tarballPath = path.join(__dirname, 'temp.tar.gz');
+        const response = await axios.get(tarballUrl, { responseType: 'stream' });
+        response.data.pipe(fs.createWriteStream(tarballPath));
+    
+        await new Promise((resolve, reject) => {
+            response.data.on('end', resolve);
+            response.data.on('error', reject);
+        });
+    
+        // Extract the tarball using the tar library
+        await extractTarball(tarballPath, cloneDir);
 
-    try {    
-        // await git.clone({
-        // http:http,
-        // fs,
-        // dir,
-        // url: repoUrl,
-        // singleBranch: true,
-        // depth: 200    
-        // });
+        // Read and display the README file
+        // Get readme length
+        await readReadmeFile(cloneDir).then ((response) => {
+            packageObj.setReadmeLength(String(response).length);
+        });
+    
+        // Clean up the temporary tarball file
+        fs.unlinkSync(tarballPath);
+    
+    } catch (error) {
+        //console.error('Error cloning repository:', error);
     }
-    catch (error) {
-        logger.error(`Could not clone repository: error code ${error}`)
-        logger.info(`Could not clone repository: error code ${error}`)
-        return packageObj;
-    }
-
-    fs.readdirSync(dir);
-
-    let repoAuthors = new Map();
-    await git.log({fs, dir}) 
-    .then((commits) => {
-        /*logger.info(`Git log retrieved for ${repoUrl}`);
-    commits.forEach((commit, index) => {
-        logger.info(`Commit ${index + 1}:`);
-        logger.info(`OID: ${commit.oid}`);
-        logger.info(`Message: ${commit.commit.message}`);
-        logger.info(`Parent: ${commit.commit.parent.join(', ')}`);
-        logger.info(`Tree: ${commit.commit.tree}`);
-        logger.info(`Author: ${commit.commit.author.name} <${commit.commit.author.email}>`);
-        logger.info(`Committer: ${commit.commit.committer.name} <${commit.commit.committer.email}>`);
-        logger.info(`GPG Signature: ${commit.commit.gpgsig}`);*/
-    })
-    .catch((error) => {
-        logger.error(`Failed to retrieve git log for ${repoUrl}: ${error.message}`);
-        logger.info(`Failed to retrieve git log for ${repoUrl}: ${error.message}`);
-    });
     
     packageObj.setBusFactor(calculateBusFactor(packageObj.readmeLength, packageObj.contributors));
     packageObj.setRampUp(calculateRampUp(packageObj.readmeLength));
     packageObj.setNetScore(calculateNetScore(packageObj));
 
-    //await removeDirectory(dir);
     return packageObj;
 }
 
 async function calculateAllMetrics(urlObjs: Url[]) {
-    const packageObjs: Package[] = [];
-
     for await(let url of urlObjs) {
         let packageObj = new Package;
         await getPackageObject(url.getPackageOwner(), url.packageName, githubToken, packageObj)
             .then((returnedPackageObject) => {
                 packageObj = returnedPackageObject;
             })
-
-        let repoUrl = `https://github.com/${url.getPackageOwner()}/${url.packageName}`;
-        await cloneRepository(repoUrl, packageObj).then ((returnedPackageObject) => {
-            packageObj = returnedPackageObject;
-        });
-
-    await cloneRepository(url.url, packageObj).then ((response) => {
-        packageObj = response;
-    });
-
-        //console.log(packageObj);
         packageObjs.push(packageObj);
     }
 
-    return packageObjs;
+    let idx = 0;
+    return BlueBirdPromise.map(urlObjs, (url:Url) => {
+        let repoUrl = `https://github.com/${url.getPackageOwner()}/${url.packageName}`;
+        let packageObj = packageObjs[idx++];
+        return new Promise(resolve => {
+          cloneRepository(repoUrl, packageObj)
+          .then((response) => {
+            resolve(response);
+           });
+        });
+      }, {concurrency: 1});
 }
 
 // Asynchronous function to fetch URLs from a given file path.
@@ -396,7 +390,7 @@ let urlObjs : Url[] = [];
 
 fetchUrlsFromFile(urlsFile).then((urls) => {
     urlObjs = urls
-    calculateAllMetrics(urlObjs).then ((packageObjs) => {
+    calculateAllMetrics(urlObjs).then (() => {
         printAllMetrics(packageObjs);
     });
 });

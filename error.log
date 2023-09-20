@@ -58,3 +58,18 @@ error: Failed to retrieve git log for https://github.com/nodejs/node: Could not 
 error: Failed to retrieve git log for https://github.com/nodejs/node: Could not find HEAD.
 error: Failed to retrieve git log for https://github.com/vuejs/vue: Could not find HEAD.
 error: Failed to retrieve git log for https://github.com/vuejs/vue: Could not find HEAD.
+error: Could not clone repository: error code HttpError: HTTP Error: 404 Not Found
+error: Could not clone repository: error code HttpError: HTTP Error: 404 Not Found
+error: Could not clone repository: error code HttpError: HTTP Error: 404 Not Found
+error: Could not clone repository: error code HttpError: HTTP Error: 404 Not Found
+error: Could not clone repository: error code HttpError: HTTP Error: 404 Not Found
+error: Failed to retrieve readme length for expressjs/express
+error: Failed to retrieve readme length for tensorflow/tensorflow
+error: Failed to retrieve readme length for nodejs/node
+error: Failed to retrieve readme length for microsoft/TypeScript
+error: Failed to retrieve readme length for lodash/lodash
+error: Failed to retrieve readme length for angular/angular
+error: Failed to retrieve readme length for facebook/react
+error: Failed to retrieve readme length for Automattic/mongoose
+error: Failed to retrieve readme length for request/request
+error: Failed to retrieve readme length for vuejs/vue

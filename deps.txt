@@ -1,0 +1,16 @@
+typescript@4.7.4
+ts-node
+dotenv
+@types/node
+axios
+@types/jest
+ts-jest
+ndjson
+@types/ndjson
+bluebird
+tar
+util
+graphql
+winston
+husky
+jest
