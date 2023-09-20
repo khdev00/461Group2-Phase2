@@ -14,6 +14,7 @@
     "@types/axios": "^0.14.0",
     "@types/node": "^20.6.2",
     "axios": "^1.5.0",
+    "axios-mock-adapter": "^1.22.0",
     "bluebird": "^3.7.2",
     "child_process": "^1.0.2",
     "dotenv": "^16.3.1",

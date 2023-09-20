@@ -18,10 +18,10 @@ const rf: number = 5;
 export function calculateRampUp(readmeLength: number) {
     let rampUpVal = 0;
 
-    // Avg readme length is 2.5 paragraphs
+    // Avg readme length is 5-8 (so ~6.5) paragraphs
     // Avg word count in 1 paragraph is 150 words
     // Avg character per word is 5
-    let targetReadmeLength = 2.5 * 150 * 5; 
+    let targetReadmeLength = 6.5 * 150 * 5; 
     let longestReadmeLength = 20 * 150 * 5; 
 
     // 100 is perfect length
@@ -86,14 +86,15 @@ export function calculateBusFactor(readmeLength: number, contributors: Map<strin
 
 export async function calculateCorrectness(owner: string, packageName: string, token: string) {
     try {
-        const stars = await getUserStars(owner, packageName, token);
+        let stars = await getUserStars(owner, packageName, token);
+        stars = Math.min(1000, stars) / 1000;
         const openIssues = await getOpenIssuesCount(owner, packageName, token);
 
         const starsWeight = 0.4;
         const issuesWeight = 0.6;
-        const correctnessScore = (stars * starsWeight / 100) + (0.6 - (0.6 * openIssues * issuesWeight / 100));
+        const correctnessScore = (stars * starsWeight) + (0.6 - (0.6 * openIssues * issuesWeight / 100));
 
-        const correctness = Math.round(correctnessScore / 1000 * (10 ** rf)) / (10 ** rf);
+        const correctness = Math.round(correctnessScore * (10 ** rf)) / (10 ** rf);
         logger.debug(`Calculated correctness value of: ${correctness}`);
 
         return correctness

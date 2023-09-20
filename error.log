@@ -73,3 +73,40 @@ error: Failed to retrieve readme length for facebook/react
 error: Failed to retrieve readme length for Automattic/mongoose
 error: Failed to retrieve readme length for request/request
 error: Failed to retrieve readme length for vuejs/vue
+error: GitHub API key not found in environment variables.
+error: Error on axios.get: TypeError: Cannot read properties of undefined (reading 'setContributors')
+error: Error on axios.get: TypeError: contributorsData.forEach is not a function
+error: Error fetching star count: Error: Contributors not found
+error: GitHub API key not found in environment variables.
+error: Error on axios.get: TypeError: Cannot read properties of undefined (reading 'setContributors')
+error: Error on axios.get: TypeError: contributorsData.forEach is not a function
+error: GitHub API key not found in environment variables.
+error: Error on axios.get: TypeError: Cannot read properties of undefined (reading 'setContributors')
+error: Error on axios.get: TypeError: contributorsData.forEach is not a function
+error: GitHub API key not found in environment variables.
+error: Error on axios.get: TypeError: Cannot read properties of undefined (reading 'setContributors')
+error: Error on axios.get: TypeError: contributorsData.forEach is not a function
+error: GitHub API key not found in environment variables.
+error: Error on axios.get: TypeError: Cannot read properties of undefined (reading 'setContributors')
+error: Error on axios.get: TypeError: contributorsData.forEach is not a function
+error: GitHub API key not found in environment variables.
+error: Error on axios.get: TypeError: Cannot read properties of undefined (reading 'setContributors')
+error: GitHub API key not found in environment variables.
+error: Error on axios.get: TypeError: Cannot read properties of undefined (reading 'setContributors')
+error: GitHub API key not found in environment variables.
+error: GitHub API key not found in environment variables.
+error: GitHub API key not found in environment variables.
+error: GitHub API key not found in environment variables.
+error: GitHub API key not found in environment variables.
+error: GitHub API key not found in environment variables.
+error: GitHub API key not found in environment variables.
+error: GitHub API key not found in environment variables.
+error: GitHub API key not found in environment variables.
+error: GitHub API key not found in environment variables.
+error: GitHub API key not found in environment variables.
+error: GitHub API key not found in environment variables.
+error: GitHub API key not found in environment variables.
+error: GitHub API key not found in environment variables.
+error: GitHub API key not found in environment variables.
+error: GitHub API key not found in environment variables.
+error: GitHub API key not found in environment variables.
