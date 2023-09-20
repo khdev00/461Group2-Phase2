@@ -1,3 +1,4 @@
 .env
 /run_URL_FILE/temp
 /coverage/clover.xml
+/coverage/lcov-report
