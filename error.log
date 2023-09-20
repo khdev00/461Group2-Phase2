@@ -110,3 +110,12 @@ error: GitHub API key not found in environment variables.
 error: GitHub API key not found in environment variables.
 error: GitHub API key not found in environment variables.
 error: GitHub API key not found in environment variables.
+error: GitHub API key not found in environment variables.
+error: Error on axios.get: TypeError: Cannot read properties of undefined (reading 'setContributors')
+error: Error on axios.get: TypeError: contributorsData.forEach is not a function
+error: GitHub API key not found in environment variables.
+error: Error on axios.get: TypeError: Cannot read properties of undefined (reading 'setContributors')
+error: Error on axios.get: TypeError: contributorsData.forEach is not a function
+error: GitHub API key not found in environment variables.
+error: Error on axios.get: TypeError: Cannot read properties of undefined (reading 'setContributors')
+error: Error on axios.get: TypeError: contributorsData.forEach is not a function
