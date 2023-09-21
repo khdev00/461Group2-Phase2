@@ -2211,3 +2211,8 @@ info: CORRECTNESS_SCORE: 0.82164
 info: BUS_FACTOR_SCORE: 0.80387
 info: RESPONSIVE_MAINTAINER_SCORE: 0.99346
 info: LICENSE_SCORE: 1
+info: Found github API key
+info: Contributors retrieved for expressjs/express
+info: issues: 30
+info: Calculated net-score: 0.83006, for package with URL: https://github.com/expressjs/express
+info: Metrics score outputted to stdout, URL: https://github.com/expressjs/express

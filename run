@@ -70,6 +70,7 @@ install_dependencies() {
 # Main logic for the file
 if [ "$1" == "install" ]; then
   # Install Node.js dependencies
+  rm -rf node_modules
   install_dependencies "$dep_file_path"
   exit 0
 elif [ "$1" == "test" ]; then
@@ -81,7 +82,7 @@ elif [ "$1" == "test" ]; then
 else
   # Runs if the first argument is a valid file
   if [ -f "$1" ]; then
-    ts-node ./run_URL_FILE/fetch_url.ts "$1";
+    npx ts-node ./run_URL_FILE/fetch_url.ts "$1";
     exit 0;
   else
     echo "URL file $1 not found";

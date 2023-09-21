@@ -1,5 +1,4 @@
 typescript@4.7.4
-ts-node
 dotenv
 @types/node
 axios
@@ -15,3 +14,4 @@ winston
 husky
 jest
 @types/fs-extra
+ts-node@10.9.1
