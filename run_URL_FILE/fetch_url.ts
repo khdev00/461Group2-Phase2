@@ -132,7 +132,7 @@ export class Package {
     }
   }
 
-  class Url {
+  export class Url {
     url: string;
     packageName: string;
     packageOwner?: string | null;
@@ -369,7 +369,7 @@ async function getGithubDetailsFromNpm(npmUrl: string) {
     }
   } 
   catch (error) {
-    console.error('Error fetching npm package data:', error);
+    logger.error('Error fetching npm package data:', error);
     return null;
   }
 }
@@ -403,5 +403,8 @@ module.exports = {
     getPackageObject,
     cloneRepository,
     logger,
-    Package
+    Package,
+    Url,
+    getGithubDetailsFromNpm,
+    calculateAllMetrics
 };

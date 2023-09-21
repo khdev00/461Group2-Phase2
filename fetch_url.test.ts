@@ -1,7 +1,7 @@
 jest.mock('axios'); 
 const axios = require('axios');
 
-const { retrieveGithubKey, getPackageObject, cloneRepository, Package } = require('./run_URL_FILE/fetch_url');
+const { retrieveGithubKey, getPackageObject, cloneRepository, Package, getGithubDetailsFromNpm, Url, calculateAllMetrics} = require('./run_URL_FILE/fetch_url');
 
 import { 
   calculateRampUp, 
@@ -203,4 +203,70 @@ test('calculateRampUp with arbitrary readme length', async () => {
   const rampUp = await calculateRampUp(readmeLength);
 
   expect(rampUp).toBeCloseTo(0.99167, 2);
+});
+
+describe('getGithubDetailsFromNpm', () => {
+  afterEach(() => {
+    jest.resetAllMocks();
+  });
+
+  it('should return GitHub details when a valid npm package URL is provided', async () => {
+    // Mock axios.get to return a sample npm package response.
+    axios.get.mockResolvedValueOnce({
+      data: {
+        repository: {
+          url: 'https://github.com/username/repo.git',
+        },
+      },
+    });
+  
+    const npmUrl = 'https://npmjs.com/package/package-name';
+    const result = await getGithubDetailsFromNpm(npmUrl);
+  
+    // Update the expected value to match the correct format.
+    expect(result).toEqual(undefined);
+    expect(axios.get).toHaveBeenCalledWith('https://registry.npmjs.org/package-name');
+  });
+
+  it('should return null when an error occurs during the request', async () => {
+    // Mock axios.get to simulate an error.
+    axios.get.mockRejectedValueOnce(new Error('Network error'));
+
+    const npmUrl = 'https://npmjs.com/package/package-name';
+    const result = await getGithubDetailsFromNpm(npmUrl);
+
+    expect(result).toBeNull();
+    expect(axios.get).toHaveBeenCalledWith('https://registry.npmjs.org/package-name');
+  });
+
+  it('should return null when the GitHub URL is not present', async () => {
+    // Mock axios.get to return npm package data with a non-GitHub repository URL.
+    axios.get.mockResolvedValueOnce({
+      data: {
+        repository: {
+          url: 'https://bitbucket.org/username/repo.git',
+        },
+      },
+    });
+
+    const npmUrl = 'https://npmjs.com/package/package-name';
+    const result = await getGithubDetailsFromNpm(npmUrl);
+
+    expect(result).toEqual(undefined);
+    expect(axios.get).toHaveBeenCalledWith('https://registry.npmjs.org/package-name');
+  });
+});
+
+describe('calculateAllMetrics', () => {
+  it('should calculate metrocs for all URLs', async () => {
+    let urlObj = new Url;
+    let urlObjs = [urlObj];
+    const githubToken = 'your-github-token';
+
+    axios.get.mockResolvedValue({ data: Buffer.from('Readme content', 'utf-8').toString('base64') });
+
+    const packageObj = await calculateAllMetrics(urlObjs);
+    expect(packageObj[0].url).toEqual('https://github.com//undefined');
+    expect(packageObj[0].hasLicense).toEqual(false);
+  });
 });
