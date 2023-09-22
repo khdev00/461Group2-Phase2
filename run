@@ -75,10 +75,38 @@ if [ "$1" == "install" ]; then
   exit 0
 elif [ "$1" == "test" ]; then
   # Run Jest tests
-  npx jest
-  # Placeholder for testing command
-  echo "X/Y test cases passed. Z% line coverage achieved."
-  exit 0
+  test_output=$(npx jest --coverage --silent 2>&1 | tee jest.log.txt)
+
+  if grep -q "FAIL " jest.log.txt; then
+    # Extract the entire line containing test results
+    test_results_line=$(echo "$test_output" | grep "Tests: *[0-9]\+ failed, *[0-9]\+ passed, *[0-9]\+ total")
+
+    tests_passed=$(echo "$test_results_line" | grep -o '[0-9]\+ passed' | cut -d ' ' -f 1)
+    total_tests=$(echo "$test_results_line" | grep -o '[0-9]\+ total' | cut -d ' ' -f 1)
+  else
+    test_results_line=$(echo "$test_output" | grep "Tests: *[0-9]\+ passed, *[0-9]\+ total")
+
+    tests_passed=$(echo "$test_results_line" | grep -o '[0-9]\+ passed' | cut -d ' ' -f 1)
+    total_tests=$(echo "$test_results_line" | grep -o '[0-9]\+ total' | cut -d ' ' -f 1)
+  fi
+
+  total_line_coverage=$(grep "All files" jest.log.txt | awk '{print int($10)}')
+  # Calculate tests_failed
+  ((tests_failed = total_tests - tests_passed))
+
+  # Print the results
+  echo "Total: $total_tests"
+  echo "Passed: $tests_passed"
+  echo "Coverage: $total_line_coverage%"
+  echo "$tests_passed/$total_tests test cases passed. $total_line_coverage% line coverage achieved."
+
+  # Exit with status 1 if tests failed
+  if [ "$tests_failed" -gt 0 ]; then
+    exit 1
+  else
+    exit 0
+  fi
+  
 else
   # Runs if the first argument is a valid file
   if [ -f "$1" ]; then
