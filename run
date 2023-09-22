@@ -70,7 +70,7 @@ install_dependencies() {
 # Main logic for the file
 if [ "$1" == "install" ]; then
   # Install Node.js dependencies
-  rm -rf node_modules
+  #rm -rf node_modules
   install_dependencies "$dep_file_path"
   exit 0
 elif [ "$1" == "test" ]; then
