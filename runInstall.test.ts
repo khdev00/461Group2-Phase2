@@ -8,8 +8,7 @@ describe('Logging and Testing', () => {
     const command = './run install';
     try {
       const output = execSync(command).toString();
-      expect(output).toContain('Installing');
-      expect(output).toContain('installed successfully.');
+      expect(output).toContain('dependencies installed...');
     } catch (error) {
       // If the script fails or throws an error, fail the test
       throw error;

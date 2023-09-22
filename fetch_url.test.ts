@@ -75,7 +75,7 @@ test('getPackageObject with invalid owner and package name', async () => {
   expect(packageObj.readmeLength).toBe(-1);
 });
 
-// Test case 1: Describe what this test is checking
+// Test case: calculateBusFactor should calculate bus factor correctly for a long readme and multiple contributors
 test('calculateBusFactor should calculate bus factor correctly for a long readme and multiple contributors', async () => {
   // Mock data that you want to use for testing
   const readmeLength = 5000; // Replace with an appropriate readme length
@@ -97,7 +97,7 @@ test('calculateBusFactor should calculate bus factor correctly for a long readme
   expect(busFactor).toBeCloseTo(0.46944, 2); // Adjust the expected value as needed
 });
 
-// Test case 2: Describe another scenario to test
+// Test case: Test calculateBusFactor for a short readme and few contributors
 test('calculateBusFactor should handle a short readme and few contributors', async () => {
   // Mock data for a different scenario
   const readmeLength = 100; // Replace with an appropriate readme length
@@ -117,7 +117,7 @@ test('calculateBusFactor should handle a short readme and few contributors', asy
   expect(busFactor).toBeCloseTo(0.01278, 2); // Adjust the expected value as needed
 });
 
-// Test case 1: Calculate bus factor for a very long readme and many contributors
+// Test case: Calculate bus factor for a very long readme and many contributors
 test('calculateBusFactor should handle a very long readme and many contributors', async () => {
   // Mock data for a very long readme and many contributors
   const readmeLength = 20000; // A very long readme
@@ -142,7 +142,7 @@ test('calculateBusFactor should handle a very long readme and many contributors'
   expect(busFactor).toBeCloseTo(0.82778, 2); // Adjust the expected value as needed
 });
 
-// Test case 2: Calculate bus factor for an empty readme and one contributor
+// Test case: Calculate bus factor for an empty readme and one contributor
 test('calculateBusFactor should handle an empty readme and one contributor', async () => {
   // Mock data for an empty readme and one contributor
   const readmeLength = 0; // An empty readme
@@ -158,6 +158,47 @@ test('calculateBusFactor should handle an empty readme and one contributor', asy
 
   // Assert the expected result
   expect(busFactor).toBeCloseTo(0.00833, 2); // Adjust the expected value as needed
+});
+
+// Test case: Calculate bus factor for a normal readme and over 20 contributers
+test('calculateBusFactor for over 20 contributors', async () => {
+  // Mock data for a normal readme and over 20 contributors
+  const readmeLength = 1000;
+  const contributors = new Map<string, number>([
+    ['contributor1', 200],
+    ['contributor2', 150],
+    ['contributor3', 100],
+    ['contributor4', 75],
+    ['contributor5', 50],
+    ['contributor6', 25],
+    ['contributor7', 200],
+    ['contributor8', 150],
+    ['contributor9', 100],
+    ['contributor10', 75],
+    ['contributor11', 50],
+    ['contributor12', 25],
+    ['contributor13', 200],
+    ['contributor14', 150],
+    ['contributor15', 100],
+    ['contributor16', 75],
+    ['contributor17', 50],
+    ['contributor18', 25],
+    ['contributor19', 200],
+    ['contributor20', 150],
+    ['contributor21', 100],
+  ]);
+
+  // Mock Axios responses for the required calls inside calculateBusFactor
+  axios.get.mockResolvedValueOnce({
+    data: { content: Buffer.from('Over 20 contributors', 'utf-8').toString('base64') },
+  });
+
+  // Call the calculateBusFactor function with the mock data
+  const busFactor = await calculateBusFactor(readmeLength, contributors);
+  
+  expect(busFactor).toBeGreaterThan(0); // Ensure bus factor is a positive number
+  expect(busFactor).toBeLessThanOrEqual(1); // Ensure bus factor is less than or equal to 1
+
 });
 
 // TESTING FOR RAMP-UP METRIC CALCULATIONS
