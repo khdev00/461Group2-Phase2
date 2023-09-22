@@ -165,7 +165,7 @@ def run_test_suite() -> int:
 def main():
     
     #Setup ENV for testing
-    os.environ['GITHUB_TOKEN'] = "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"
+    os.environ['GITHUB_TOKEN'] = ""
     os.environ['LOG_LEVEL'] = "0"
     os.environ['LOG_FILE'] = "/info.log"
     
