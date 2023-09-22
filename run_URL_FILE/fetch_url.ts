@@ -160,7 +160,7 @@ function retrieveGithubKey() {
     if (!githubApiKey) {
         const error = new Error("GitHub API key not found in environment variables.");
         logger.error(error);
-        throw error;
+        process.exit(1);
     } else {
         logger.info("Found github API key");
         return githubApiKey;

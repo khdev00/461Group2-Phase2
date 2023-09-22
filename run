@@ -82,8 +82,19 @@ elif [ "$1" == "test" ]; then
 else
   # Runs if the first argument is a valid file
   if [ -f "$1" ]; then
-    npx ts-node ./run_URL_FILE/fetch_url.ts "$1";
-    exit 0;
+    if [ -n "$LOG_FILE" ]; then
+      # Check if GITHUB_TOKEN is set
+      if [ -n "$GITHUB_TOKEN" ]; then
+        npx ts-node ./run_URL_FILE/fetch_url.ts "$1";
+        exit 0;
+      else
+        echo "GITHUB_TOKEN is not set in .env."
+        exit 1
+      fi
+    else
+      echo "LOG_FILE is not set in .env."
+      exit 1
+    fi
   else
     echo "URL file $1 not found";
     exit 1;

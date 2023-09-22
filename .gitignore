@@ -2,3 +2,5 @@
 /run_URL_FILE/temp
 /coverage/clover.xml
 /coverage/Lcov-report
+checker.py
+helper.py
