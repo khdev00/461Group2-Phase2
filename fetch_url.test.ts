@@ -1,8 +1,9 @@
 jest.mock('axios'); 
 const axios = require('axios');
 
-const { retrieveGithubKey, getPackageObject, cloneRepository, Package, getGithubDetailsFromNpm, Url, calculateAllMetrics} = require('./run_URL_FILE/fetch_url');
+const { retrieveGithubKey, getPackageObject, cloneRepository, Package, getGithubDetailsFromNpm, Url, calculateAllMetrics, fetchUrlsFromFile} = require('./run_URL_FILE/fetch_url');
 
+import { logger } from './run_URL_FILE/fetch_url';
 import { 
   calculateRampUp, 
   calculateBusFactor,  
@@ -310,4 +311,66 @@ describe('calculateAllMetrics', () => {
     expect(packageObj[0].url).toEqual('https://github.com//undefined');
     expect(packageObj[0].hasLicense).toEqual(false);
   });
+});
+
+describe('fetchUrlsFromFile', () => {
+  const sampleFilePath = "./run_URL_FILE/urls.txt";
+
+  it('should parse valid URLs from the file', async () => {
+    const urls = await fetchUrlsFromFile(sampleFilePath);
+    expect(urls).toEqual([
+      {
+        "packageName": "express",
+        "packageOwner": null,
+        "url": "https://www.npmjs.com/package/express",
+      },
+      {
+        "packageName": "tensorflow",
+        "packageOwner": "tensorflow",
+        "url": "https://github.com/tensorflow/tensorflow",
+      },
+      {
+        "packageName": "node",
+        "packageOwner": "nodejs",
+        "url": "https://github.com/nodejs/node",
+      },
+      {
+        "packageName": "TypeScript",
+        "packageOwner": "microsoft",
+        "url": "https://github.com/microsoft/TypeScript",
+      },
+      {
+        "packageName": "lodash",
+        "packageOwner": null,
+        "url": "https://www.npmjs.com/package/lodash",
+      },
+      {
+        "packageName": "angular",
+        "packageOwner": "angular",
+        "url": "https://github.com/angular/angular",
+        },
+      {
+        "packageName": "react",
+        "packageOwner": "facebook",
+        "url": "https://github.com/facebook/react",
+      },
+      {
+        "packageName": "mongoose",
+        "packageOwner": null,
+        "url": "https://www.npmjs.com/package/mongoose",
+        },
+        {
+        "packageName": "request",
+        "packageOwner": null,
+        "url": "https://www.npmjs.com/package/request",
+        },
+        {
+          "packageName": "vue",
+          "packageOwner": "vuejs",
+          "url": "https://github.com/vuejs/vue",
+        }
+    ])
+
+  });
+
 });

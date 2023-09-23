@@ -286,7 +286,7 @@ async function calculateAllMetrics(urlObjs: Url[]) {
 }
 
 // Asynchronous function to fetch URLs from a given file path.
-async function fetchUrlsFromFile(filePath: string) {
+export async function fetchUrlsFromFile(filePath: string) {
     try {
       const data = await fs.promises.readFile(filePath, 'utf-8');
   
@@ -335,7 +335,7 @@ async function fetchUrlsFromFile(filePath: string) {
     }
 }
 
-async function getGithubDetailsFromNpm(npmUrl: string) {
+export async function getGithubDetailsFromNpm(npmUrl: string) {
   try {
     // Fetch package data from npm registry API.
     const packageName = npmUrl.split('/').pop();
@@ -390,5 +390,6 @@ module.exports = {
     Package,
     Url,
     getGithubDetailsFromNpm,
-    calculateAllMetrics
+    calculateAllMetrics,
+    fetchUrlsFromFile,
 };
