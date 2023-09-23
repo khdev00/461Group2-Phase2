@@ -37,6 +37,7 @@ import {
 
 import { 
     readReadmeFile,
+    getContributors
 } from './metric_calcs_helpers';
 
 dotenv.config();
@@ -173,25 +174,8 @@ async function getPackageObject(owner: string, packageName: string, token: strin
     const headers = {
         Authorization: `Bearer ${token}`,
     };
-    
-    await axios.get(`https://api.github.com/repos/${owner}/${packageName}/contributors`, { headers })
-    .then((response) => {
-        const contributorsData = response.data;
-        const contributorsMap = new Map<string, number>();
 
-        contributorsData.forEach((contributor: any) => {
-            const username = contributor.login;
-            const contributions = contributor.contributions; 
-            contributorsMap.set(username, contributions);
-        });
-
-        packageObj.setContributors(contributorsMap);
-    })
-    .catch((err) => {
-        logger.error(`Error on axios.get: ${err}`);
-        logger.info(`Error on axios.get: ${err}`);
-        packageObj.setContributors(new Map()); 
-    });
+    packageObj = await getContributors(packageObj, headers, owner, packageName);
 
     await axios.get(`https://api.github.com/repos/${owner}/${packageName}/license`,{headers,})
         .then((response) => {

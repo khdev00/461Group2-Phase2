@@ -140,3 +140,27 @@ export async function getIssueResolutionTime(owner: string, packageName: string,
         return 0;
     }
 }
+
+export async function getContributors(packageObj: Package, headers: any, owner: string, packageName: string): Promise<Package> {
+    await axios.get(`https://api.github.com/repos/${owner}/${packageName}/contributors`, { headers })
+    .then((response) => {
+        const contributorsData = response.data;
+        const contributorsMap = new Map<string, number>();
+
+        contributorsData.forEach((contributor: any) => {
+            const username = contributor.login;
+            const contributions = contributor.contributions; 
+            contributorsMap.set(username, contributions);
+        });
+
+        packageObj.setContributors(contributorsMap);
+        return packageObj;
+    })
+    .catch((err) => {
+        logger.error(`Error on axios.get: ${err}`);
+        logger.info(`Error on axios.get: ${err}`);
+        packageObj.setContributors(new Map()); 
+        return packageObj;
+    });
+    return packageObj;
+}

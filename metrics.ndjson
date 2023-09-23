@@ -1,0 +1,5 @@
+[
+    {"metric":"RAMP_UP_SCORE", "api": "clone", "filepath":"./run_URL_FILE/fetch_url.ts", "line":248},
+    {"metric":"CORRECTNESS_SCORE", "api": "rest", "filepath":"./run_URL_FILE/metric_calc_helpers.ts", "line":33},
+    {"metric":"BUS_FACTOR_SCORE", "api": "rest", "filepath":"./run_URL_FILE/metric_calc_helpers.ts", "line":33}
+]
