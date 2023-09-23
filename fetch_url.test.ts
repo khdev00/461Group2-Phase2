@@ -373,9 +373,82 @@ describe('fetchUrlsFromFile', () => {
           "url": "https://github.com/vuejs/vue",
         }
     ])
+  });
+});
 
+describe('readReadmeFile', () => {
+  it('should read the content of an existing README file', async () => {
+    // Create a spy for fs.existsSync and make it return true
+    const existsSpy = jest.spyOn(fs, 'existsSync');
+    existsSpy.mockReturnValue(true);
+
+    // Create a spy for fs.readFileSync and make it return the desired content
+    const readFileSyncSpy = jest.spyOn(fs, 'readFileSync');
+    readFileSyncSpy.mockReturnValue('Mocked README content');
+
+    // Provide a mock clone directory path (doesn't need to exist in reality)
+    const cloneDir = '/path/to/existing/repo';
+
+    const readmeContent = await readReadmeFile(cloneDir);
+
+    // Assert that the spies were called as expected
+    expect(existsSpy).toHaveBeenCalledWith('/path/to/existing/repo/README.md');
+    expect(readFileSyncSpy).toHaveBeenCalledWith('/path/to/existing/repo/README.md', 'utf-8');
+    
+    // Assert that the content matches the mocked content
+    expect(readmeContent).toEqual('Mocked README content');
+
+    // Restore the original implementations of the spies
+    existsSpy.mockRestore();
+    readFileSyncSpy.mockRestore();
   });
 
+  it('should return an empty string for a non-existing README file', async () => {
+    // Create a spy for fs.existsSync and make it return false
+    const existsSpy = jest.spyOn(fs, 'existsSync');
+    existsSpy.mockReturnValue(false);
+
+    // Provide a mock clone directory path (doesn't need to exist in reality)
+    const cloneDir = '/path/to/non/existing/repo';
+
+    const readmeContent = await readReadmeFile(cloneDir);
+
+    // Assert that fs.existsSync was called as expected
+    expect(existsSpy).toHaveBeenCalledWith('/path/to/non/existing/repo/README.md');
+
+    // Assert that the content is an empty string
+    expect(readmeContent).toEqual('');
+
+    // Restore the original implementation of the spy
+    existsSpy.mockRestore();
+  });
+
+  it('should handle errors when reading the README file', async () => {
+    // Create a spy for fs.existsSync and make it return true
+    const existsSpy = jest.spyOn(fs, 'existsSync');
+    existsSpy.mockReturnValue(true);
+
+    // Create a spy for fs.readFileSync and make it throw an error
+    const readFileSyncSpy = jest.spyOn(fs, 'readFileSync');
+    readFileSyncSpy.mockImplementation(() => {
+      throw new Error('Mocked error');
+    });
+
+    // Provide a mock clone directory path (doesn't need to exist in reality)
+    const cloneDir = '/path/to/error/repo';
+
+    const readmeContent = await readReadmeFile(cloneDir);
+
+    // Assert that fs.existsSync was called as expected
+    expect(existsSpy).toHaveBeenCalledWith('/path/to/error/repo/README.md');
+
+    // Assert that the content is an empty string due to the error
+    expect(readmeContent).toEqual('');
+
+    // Restore the original implementations of the spies
+    existsSpy.mockRestore();
+    readFileSyncSpy.mockRestore();
+  });
 });
 
 describe('readReadmeFile', () => {

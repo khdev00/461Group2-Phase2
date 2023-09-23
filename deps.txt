@@ -8,8 +8,6 @@ ndjson
 @types/ndjson
 bluebird
 tar
-util
-graphql
 winston
 husky
 jest

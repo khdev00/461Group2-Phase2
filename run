@@ -95,9 +95,9 @@ elif [ "$1" == "test" ]; then
   ((tests_failed = total_tests - tests_passed))
 
   # Print the results
-  # echo "Total: $total_tests"
-  # echo "Passed: $tests_passed"
-  # echo "Coverage: $total_line_coverage%"
+  #echo "Total: $total_tests"
+  #echo "Passed: $tests_passed"
+  #echo "Coverage: $total_line_coverage%"
   echo "$tests_passed/$total_tests test cases passed. $total_line_coverage% line coverage achieved."
 
   # Exit with status 1 if tests failed

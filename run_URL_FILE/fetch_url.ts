@@ -14,16 +14,12 @@ import ndjson from 'ndjson';
 import fs from 'fs'; // Node.js file system module for cloning repos  
 import os from 'os'
 import path from 'path'
-import { print } from 'graphql';
 const http = require("isomorphic-git/http/node");
 
 // For cloning repo
 const BlueBirdPromise = require('bluebird')
 const tar = require('tar');
-import { promisify } from 'util';
-import { exec } from 'child_process';
 import * as fsExtra from 'fs-extra';
-const execAsync = promisify(exec);
 
 const packageObjs: Package[] = [];
 
