@@ -370,7 +370,5 @@ describe('fetchUrlsFromFile', () => {
           "url": "https://github.com/vuejs/vue",
         }
     ])
-
   });
-
 });
