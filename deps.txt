@@ -9,7 +9,6 @@ ndjson
 bluebird
 tar
 winston
-husky
 jest
 @types/fs-extra
 ts-node@10.9.1

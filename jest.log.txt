@@ -1,17 +1,18 @@
 PASS ./fetch_url.test.ts
 {"URL":"https://github.com//undefined","NET_SCORE":null,"RAMP_UP_SCORE":0.67493,"CORRECTNESS_SCORE":0.528,"BUS_FACTOR_SCORE":null,"RESPONSIVE_MAINTAINER_SCORE":0,"LICENSE_SCORE":0}
-PASS ./runInstall.test.ts (17.187 s)
+PASS ./runInstall.test.ts (15.369 s)
+A worker process has failed to exit gracefully and has been force exited. This is likely caused by tests leaking due to improper teardown. Try running with --detectOpenHandles to find leaks. Active timers can also cause this, ensure that .unref() was called on them.
 -------------------------|---------|----------|---------|---------|------------------------------------------------------------
 File                     | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s                                          
 -------------------------|---------|----------|---------|---------|------------------------------------------------------------
-All files                |   80.77 |    58.13 |   83.92 |   80.95 |                                                            
+All files                |   82.72 |    62.79 |   85.71 |   82.91 |                                                            
  fetch_url.ts            |   86.47 |    76.19 |   80.55 |   86.39 | 65,109,145,151,179,190-191,205-206,231-248,308-309,345-348 
  logger.ts               |   63.63 |    16.66 |     100 |   63.63 | 21-30,36-38                                                
  metric_calcs.ts         |   91.42 |      100 |     100 |   91.42 | 103-105,126-128                                            
- metric_calcs_helpers.ts |   67.01 |    38.46 |      80 |    67.7 | 8-23,69,74-93,111,119-123,131-136                          
+ metric_calcs_helpers.ts |   74.22 |    53.84 |      90 |      75 | 69,74-93,111,119-123,131-136                               
 -------------------------|---------|----------|---------|---------|------------------------------------------------------------
 
 Test Suites: 2 passed, 2 total
-Tests:       19 passed, 19 total
+Tests:       25 passed, 25 total
 Snapshots:   0 total
-Time:        18.317 s
+Time:        17.127 s

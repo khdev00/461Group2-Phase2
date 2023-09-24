@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">67.01% </span>
+                <span class="strong">74.22% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>65/97</span>
+                <span class='fraction'>72/97</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">38.46% </span>
+                <span class="strong">53.84% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>5/13</span>
+                <span class='fraction'>7/13</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">80% </span>
+                <span class="strong">90% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>8/10</span>
+                <span class='fraction'>9/10</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">67.7% </span>
+                <span class="strong">75% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>65/96</span>
+                <span class='fraction'>72/96</span>
             </div>
         
             
@@ -235,22 +235,22 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">6x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">6x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">6x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -399,23 +399,23 @@ import winston, { Logform } from 'winston'; //Logging library
 import axios from 'axios'; // Library to conveniantly send HTTP requests to interact with REST API
 import { logger, Package } from './fetch_url'
 &nbsp;
-export async function <span class="fstat-no" title="function not covered" >readReadmeFile(</span>cloneDir: string) {
-<span class="cstat-no" title="statement not covered" >    try {</span>
+export async function readReadmeFile(cloneDir: string) {
+    try {
         // Check if the README file exists in the cloned repository
-        const readmePath = <span class="cstat-no" title="statement not covered" >path.join(cloneDir, 'README.md');</span>
+        const readmePath = path.join(cloneDir, 'README.md');
 &nbsp;
-<span class="cstat-no" title="statement not covered" >        if (fs.existsSync(readmePath)) {</span>
+        if (fs.existsSync(readmePath)) {
             // Read the README file content
-            const readmeContent = <span class="cstat-no" title="statement not covered" >fs.readFileSync(readmePath, 'utf-8');</span>
+            const readmeContent = fs.readFileSync(readmePath, 'utf-8');
             //console.log(`README Content:\n${readmeContent}`);
-<span class="cstat-no" title="statement not covered" >            return readmeContent;</span>
+            return readmeContent;
         } else {
             //console.log('README file not found in the repository.');
-<span class="cstat-no" title="statement not covered" >            return '';</span>
+            return '';
         }
     } catch (error) {
         //console.error('Error reading README file:', error);
-<span class="cstat-no" title="statement not covered" >        return '';</span>
+        return '';
     }
 }
 &nbsp;
@@ -565,7 +565,7 @@ export async function getContributors(packageObj: Package, headers: any, owner: 
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2023-09-23T18:14:18.585Z
+                at 2023-09-24T03:55:57.869Z
             </div>
         <script src="prettify.js"></script>
         <script>
